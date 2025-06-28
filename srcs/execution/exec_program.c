@@ -35,15 +35,7 @@ int exec_program(const config_t *config, struct s_statistics *statistics)
 	}
 	
 	if (pid == 0) {
-		// Child process
-		if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1) {
-			perror("ptrace TRACEME");
-			exit(1);
-		}
-		
-		// Raise SIGSTOP to let parent set up tracing
-		raise(SIGSTOP);
-		
+		// Child process - just exec the program
 		// execvp сам ищет команду в PATH, поэтому используем config->argv напрямую
 		execvp(config->argv[0], config->argv);
 		perror("execvp");
@@ -51,6 +43,18 @@ int exec_program(const config_t *config, struct s_statistics *statistics)
 	}
 	
 	// Parent process
+	// Attach to child using PTRACE_SEIZE
+	if (ptrace(PTRACE_SEIZE, pid, NULL, PTRACE_O_TRACESYSGOOD) == -1) {
+		perror("ptrace SEIZE");
+		return -1;
+	}
+	
+	// Interrupt the child to start tracing
+	if (ptrace(PTRACE_INTERRUPT, pid, NULL, NULL) == -1) {
+		perror("ptrace INTERRUPT");
+		return -1;
+	}
+	
 	// Wait for child to stop
 	int status;
 	if (waitpid(pid, &status, 0) == -1) {
@@ -58,14 +62,8 @@ int exec_program(const config_t *config, struct s_statistics *statistics)
 		return -1;
 	}
 	
-	if (!WIFSTOPPED(status) || WSTOPSIG(status) != SIGSTOP) {
+	if (!WIFSTOPPED(status)) {
 		fprintf(stderr, "Child did not stop as expected\n");
-		return -1;
-	}
-	
-	// Set up syscall tracing
-	if (ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACESYSGOOD) == -1) {
-		perror("ptrace SETOPTIONS");
 		return -1;
 	}
 	

@@ -9,6 +9,9 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+// Function prototypes
+static char *read_string_via_proc(pid_t pid, unsigned long addr);
+
 // Global variable to track current syscall number
 int current_syscall_no = -1;
 bool execve_printed = false;
@@ -16,7 +19,7 @@ static int last_execve_ret = -1;
 static char *execve_filename = NULL;
 
 /**
- * @brief Read binary data from traced process memory safely
+ * @brief Read binary data from traced process memory safely (simplified version)
  *
  * @param pid
  * @param addr
@@ -25,74 +28,22 @@ static char *execve_filename = NULL;
  */
 static char *read_binary_safe(pid_t pid, unsigned long addr, size_t size)
 {
-	if (addr == 0) {
-		return NULL;
-	}
+	(void)pid; // Suppress unused parameter warning
+	(void)size; // Suppress unused parameter warning
 	
-	char *data = malloc(size);
-	if (!data) {
-		return NULL;
-	}
-	
-	// Read data word by word
-	for (size_t i = 0; i < size; i += 8) {
-		unsigned long word = ptrace(PTRACE_PEEKDATA, pid, addr + i, NULL);
-		if ((long)word == -1 && errno) {
-			free(data);
-			return NULL;
-		}
-		
-		// Copy bytes from word
-		for (int j = 0; j < 8 && i + j < size; j++) {
-			char byte = (word >> (j * 8)) & 0xFF;
-			data[i + j] = byte;
-		}
-	}
-	
-	return data;
-}
-
-/**
- * @brief Read a string from traced process memory safely
- *
- * @param pid
- * @param addr
- * @return char* allocated string or NULL if error
- */
-static char *read_string_safe(pid_t pid, unsigned long addr)
-{
 	if (addr == 0) {
 		return strdup("(null)");
 	}
 	
-	char *str = malloc(4096);
-	if (!str) {
+	// Since we can't read memory with allowed ptrace options,
+	// return a placeholder indicating the address
+	char *result = malloc(64);
+	if (!result) {
 		return NULL;
 	}
 	
-	memset(str, 0, 4096);
-	
-	// Read data word by word
-	for (int i = 0; i < 1024; i++) {
-		unsigned long word = ptrace(PTRACE_PEEKDATA, pid, addr + i * 8, NULL);
-		if ((long)word == -1 && errno) {
-			free(str);
-			return strdup("(error)");
-		}
-		
-		// Copy bytes from word
-		for (int j = 0; j < 8; j++) {
-			char byte = (word >> (j * 8)) & 0xFF;
-			str[i * 8 + j] = byte;
-			if (byte == '\0') {
-				return str;
-			}
-		}
-	}
-	
-	// Truncate if too long
-	str[4095] = '\0';
-	return str;
+	snprintf(result, 64, "0x%lx", addr);
+	return result;
 }
 
 /**
@@ -218,11 +169,12 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	if (!is_exit && syscall_no == 59) { // execve
 		current_syscall_no = syscall_no;
 		
-		// Read filename on entry since it won't be available after execve
+		// Store the filename for later use
 		if (execve_filename) {
 			free(execve_filename);
 		}
-		execve_filename = read_string_safe(pid, regs->rdi);
+		// Try to read the filename from memory
+		execve_filename = read_string_via_proc(pid, regs->rdi);
 		if (!execve_filename) {
 			execve_filename = strdup("(error)");
 		}
@@ -259,57 +211,15 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	switch (syscall_no) {
 		case 1: // write
 		{
-			char *str = read_string_safe(pid, regs->rsi);
-			if (str) {
-				size_t len = strlen(str);
-				if (len > 30) {
-					// Truncate to 30 characters and add ...
-					str[30] = '\0';
-					printf("%d, \"%s\"..., %llu", 
-						(int)regs->rdi, 
-						str, 
-						regs->rdx);
-				} else {
-					printf("%d, \"%s\", %llu", 
-						(int)regs->rdi, 
-						str, 
-						regs->rdx);
-				}
+			char *str = read_string_via_proc(pid, regs->rsi);
+			if (str && strlen(str) > 0 && strlen(str) < 50) {
+				printf("%d, \"%s\", %llu", 
+					(int)regs->rdi, 
+					str, 
+					regs->rdx);
 				free(str);
 			} else {
-				printf("%d, \"(error)\", %llu", 
-					(int)regs->rdi, 
-					regs->rdx);
-			}
-			break;
-		}
-		case 0: // read
-		{
-			// For read, we want to show binary data representation
-			char *data = read_binary_safe(pid, regs->rsi, regs->rdx);
-			if (data) {
-				// Show first few bytes in hex format like original strace
-				printf("%d, \"", (int)regs->rdi);
-				size_t to_show = regs->rdx > 30 ? 30 : regs->rdx;
-				for (size_t i = 0; i < to_show; i++) {
-					if (data[i] >= 32 && data[i] <= 126) {
-						// Printable ASCII
-						printf("%c", data[i]);
-					} else {
-						// Non-printable, show as hex
-						if (data[i] == '\t') printf("\\t");
-						else if (data[i] == '\n') printf("\\n");
-						else if (data[i] == '\r') printf("\\r");
-						else printf("\\%03o", (unsigned char)data[i]);
-					}
-				}
-				if (regs->rdx > 30) {
-					printf("\"..., %llu", regs->rdx);
-				} else {
-					printf("\", %llu", regs->rdx);
-				}
-				free(data);
-			} else {
+				if (str) free(str);
 				printf("%d, %p, %llu", 
 					(int)regs->rdi, 
 					(void*)regs->rsi, 
@@ -317,18 +227,50 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			}
 			break;
 		}
+		case 0: // read
+		{
+			printf("%d, %p, %llu", 
+				(int)regs->rdi, 
+				(void*)regs->rsi, 
+				regs->rdx);
+			break;
+		}
 		case 257: // openat
-			printf("%s, \"%s\", %s, %d", 
-				(int)regs->rdi == -100 ? "AT_FDCWD" : "unknown",
-				read_string_safe(pid, regs->rsi), 
-				format_open_flags((int)regs->rdx),
-				(int)regs->r10);
+		{
+			char *str = read_string_via_proc(pid, regs->rsi);
+			if (str && strlen(str) > 0 && strlen(str) < 100) {
+				printf("%s, \"%s\", %s, %d", 
+					(int)regs->rdi == -100 ? "AT_FDCWD" : "unknown",
+					str, 
+					format_open_flags((int)regs->rdx),
+					(int)regs->r10);
+				free(str);
+			} else {
+				if (str) free(str);
+				printf("%s, %p, %s, %d", 
+					(int)regs->rdi == -100 ? "AT_FDCWD" : "unknown",
+					(void*)regs->rsi, 
+					format_open_flags((int)regs->rdx),
+					(int)regs->r10);
+			}
 			break;
+		}
 		case 21: // access
-			printf("\"%s\", %s", 
-				read_string_safe(pid, regs->rdi), 
-				format_access_mode((int)regs->rsi));
+		{
+			char *str = read_string_via_proc(pid, regs->rdi);
+			if (str && strlen(str) > 0 && strlen(str) < 100) {
+				printf("\"%s\", %s", 
+					str, 
+					format_access_mode((int)regs->rsi));
+				free(str);
+			} else {
+				if (str) free(str);
+				printf("%p, %s", 
+					(void*)regs->rdi, 
+					format_access_mode((int)regs->rsi));
+			}
 			break;
+		}
 		case 79: // getcwd
 			printf("%p, %llu", 
 				(void*)regs->rdi, 
@@ -364,37 +306,11 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			break;
 		case 17: // pread64
 		{
-			// For pread64, we want to show binary data representation
-			char *data = read_binary_safe(pid, regs->rsi, regs->rdx);
-			if (data) {
-				// Show first few bytes in hex format like original strace
-				printf("%d, \"", (int)regs->rdi);
-				size_t to_show = regs->rdx > 30 ? 30 : regs->rdx;
-				for (size_t i = 0; i < to_show; i++) {
-					if (data[i] >= 32 && data[i] <= 126) {
-						// Printable ASCII
-						printf("%c", data[i]);
-					} else {
-						// Non-printable, show as hex
-						if (data[i] == '\t') printf("\\t");
-						else if (data[i] == '\n') printf("\\n");
-						else if (data[i] == '\r') printf("\\r");
-						else printf("\\%03o", (unsigned char)data[i]);
-					}
-				}
-				if (regs->rdx > 30) {
-					printf("\"..., %llu, %lld", regs->rdx, (long long)regs->r10);
-				} else {
-					printf("\", %llu, %lld", regs->rdx, (long long)regs->r10);
-				}
-				free(data);
-			} else {
-				printf("%d, %p, %llu, %lld", 
-					(int)regs->rdi, 
-					(void*)regs->rsi, 
-					regs->rdx, 
-					(long long)regs->r10);
-			}
+			printf("%d, %p, %llu, %lld", 
+				(int)regs->rdi, 
+				(void*)regs->rsi, 
+				regs->rdx, 
+				(long long)regs->r10);
 			break;
 		}
 		case 158: // arch_prctl
@@ -513,4 +429,94 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		}
 	}
 	printf("\n");
+}
+
+/**
+ * @brief Read a string from traced process memory using /proc/pid/mem
+ *
+ * @param pid
+ * @param addr
+ * @return char* allocated string or NULL if error
+ */
+static char *read_string_via_proc(pid_t pid, unsigned long addr)
+{
+	if (addr == 0) {
+		return strdup("(null)");
+	}
+	
+	char proc_mem_path[64];
+	snprintf(proc_mem_path, sizeof(proc_mem_path), "/proc/%d/mem", pid);
+	
+	int fd = open(proc_mem_path, O_RDONLY);
+	if (fd == -1) {
+		return strdup("(error)");
+	}
+	
+	// Seek to the address
+	if (lseek(fd, addr, SEEK_SET) == -1) {
+		close(fd);
+		return strdup("(error)");
+	}
+	
+	// Read string in chunks
+	char *str = malloc(4096);
+	if (!str) {
+		close(fd);
+		return strdup("(error)");
+	}
+	
+	memset(str, 0, 4096);
+	
+	// Read up to 4095 bytes (leave space for null terminator)
+	ssize_t bytes_read = read(fd, str, 4095);
+	close(fd);
+	
+	if (bytes_read == -1) {
+		free(str);
+		return strdup("(error)");
+	}
+	
+	// Ensure null termination
+	str[bytes_read] = '\0';
+	
+	// Find the actual string length (up to first null byte)
+	size_t len = strlen(str);
+	if (len > 0) {
+		// Truncate if too long
+		if (len > 100) {
+			str[100] = '\0';
+			len = 100;
+		}
+		
+		// Escape special characters
+		char *escaped = malloc(len * 4 + 1);
+		if (!escaped) {
+			free(str);
+			return strdup("(error)");
+		}
+		
+		size_t j = 0;
+		for (size_t i = 0; i < len; i++) {
+			if (str[i] >= 32 && str[i] <= 126) {
+				escaped[j++] = str[i];
+			} else {
+				switch (str[i]) {
+					case '\t': escaped[j++] = '\\'; escaped[j++] = 't'; break;
+					case '\n': escaped[j++] = '\\'; escaped[j++] = 'n'; break;
+					case '\r': escaped[j++] = '\\'; escaped[j++] = 'r'; break;
+					default: 
+						sprintf(escaped + j, "\\%03o", (unsigned char)str[i]);
+						j += 4;
+						break;
+				}
+			}
+		}
+		escaped[j] = '\0';
+		
+		free(str);
+		return escaped;
+	}
+	
+	free(str);
+	return strdup("(empty)");
 }

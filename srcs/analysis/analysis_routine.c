@@ -7,6 +7,12 @@
 #include <sys/user.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/uio.h>
+
+// Define NT_PRSTATUS if not defined
+#ifndef NT_PRSTATUS
+#define NT_PRSTATUS 1
+#endif
 
 /**
  * @brief Main analysis routine
@@ -43,10 +49,15 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics __attribute__((u
 		if (WIFSTOPPED(status)) {
 			// Check if it's a syscall stop
 			if (WSTOPSIG(status) == (SIGTRAP | 0x80)) {
-				// Get registers
+				// Get registers using PTRACE_GETREGSET
 				struct user_regs_struct regs;
-				if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
-					perror("ptrace GETREGS");
+				struct iovec iov = {
+					.iov_base = &regs,
+					.iov_len = sizeof(regs)
+				};
+				
+				if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
+					perror("ptrace GETREGSET");
 					return -1;
 				}
 				
