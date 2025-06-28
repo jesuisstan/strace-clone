@@ -1,9 +1,8 @@
 #include <syscall_strace.h>
 #include <ft_strace_utils.h>
-#include <statistics.h>
 #include <sys/ptrace.h>
 #include <sys/user.h>
-#include <sys/time.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -14,7 +13,7 @@
 int current_syscall_no = -1;
 bool execve_printed = false;
 static int last_execve_ret = -1;
-static unsigned long execve_filename_addr = 0;
+static char *execve_filename = NULL;
 
 /**
  * @brief Read a string from traced process memory safely
@@ -152,7 +151,15 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	// Special handling for execve on entry
 	if (!is_exit && syscall_no == 59) { // execve
 		current_syscall_no = syscall_no;
-		execve_filename_addr = regs->rdi;
+		
+		// Read filename on entry since it won't be available after execve
+		if (execve_filename) {
+			free(execve_filename);
+		}
+		execve_filename = read_string_safe(pid, regs->rdi);
+		if (!execve_filename) {
+			execve_filename = strdup("(error)");
+		}
 		return;
 	}
 	
@@ -163,13 +170,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		
 		// Only print if this execve succeeded (ret == 0)
 		if (ret == 0) {
-			// Read filename from saved address
-			char *filename = read_string_safe(pid, execve_filename_addr);
-			if (!filename) {
-				filename = strdup("(error)");
-			}
-			printf("execve(\"%s\", ...) = 0\n", filename);
-			free(filename);
+			printf("execve(\"%s\", ...) = 0\n", execve_filename ? execve_filename : "(error)");
 		}
 		return;
 	}
