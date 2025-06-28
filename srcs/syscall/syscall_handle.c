@@ -16,6 +16,43 @@ static int last_execve_ret = -1;
 static char *execve_filename = NULL;
 
 /**
+ * @brief Read binary data from traced process memory safely
+ *
+ * @param pid
+ * @param addr
+ * @param size
+ * @return char* allocated data or NULL if error
+ */
+static char *read_binary_safe(pid_t pid, unsigned long addr, size_t size)
+{
+	if (addr == 0) {
+		return NULL;
+	}
+	
+	char *data = malloc(size);
+	if (!data) {
+		return NULL;
+	}
+	
+	// Read data word by word
+	for (size_t i = 0; i < size; i += 8) {
+		unsigned long word = ptrace(PTRACE_PEEKDATA, pid, addr + i, NULL);
+		if ((long)word == -1 && errno) {
+			free(data);
+			return NULL;
+		}
+		
+		// Copy bytes from word
+		for (int j = 0; j < 8 && i + j < size; j++) {
+			char byte = (word >> (j * 8)) & 0xFF;
+			data[i + j] = byte;
+		}
+	}
+	
+	return data;
+}
+
+/**
  * @brief Read a string from traced process memory safely
  *
  * @param pid
@@ -92,6 +129,35 @@ static const char *format_mmap_prot(int prot)
 	if (prot & PROT_READ) strcat(buf, "PROT_READ|");
 	if (prot & PROT_WRITE) strcat(buf, "PROT_WRITE|");
 	if (prot & PROT_EXEC) strcat(buf, "PROT_EXEC|");
+	
+	if (buf[0] == '\0') {
+		return "0";
+	}
+	
+	// Remove trailing |
+	buf[strlen(buf) - 1] = '\0';
+	return buf;
+}
+
+/**
+ * @brief Format access mode flags
+ */
+static const char *format_access_mode(int mode)
+{
+	static char buf[256];
+	buf[0] = '\0';
+	
+	if (mode == 0) strcat(buf, "F_OK|");
+	else if (mode == 1) strcat(buf, "X_OK|");
+	else if (mode == 2) strcat(buf, "W_OK|");
+	else if (mode == 4) strcat(buf, "R_OK|");
+	else if (mode == 6) strcat(buf, "R_OK|W_OK|");
+	else if (mode == 5) strcat(buf, "R_OK|X_OK|");
+	else if (mode == 7) strcat(buf, "R_OK|W_OK|X_OK|");
+	else {
+		sprintf(buf, "%d", mode);
+		return buf;
+	}
 	
 	if (buf[0] == '\0') {
 		return "0";
@@ -218,22 +284,50 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			break;
 		}
 		case 0: // read
-			printf("%d, %p, %llu", 
-				(int)regs->rdi, 
-				(void*)regs->rsi, 
-				regs->rdx);
+		{
+			// For read, we want to show binary data representation
+			char *data = read_binary_safe(pid, regs->rsi, regs->rdx);
+			if (data) {
+				// Show first few bytes in hex format like original strace
+				printf("%d, \"", (int)regs->rdi);
+				size_t to_show = regs->rdx > 30 ? 30 : regs->rdx;
+				for (size_t i = 0; i < to_show; i++) {
+					if (data[i] >= 32 && data[i] <= 126) {
+						// Printable ASCII
+						printf("%c", data[i]);
+					} else {
+						// Non-printable, show as hex
+						if (data[i] == '\t') printf("\\t");
+						else if (data[i] == '\n') printf("\\n");
+						else if (data[i] == '\r') printf("\\r");
+						else printf("\\%03o", (unsigned char)data[i]);
+					}
+				}
+				if (regs->rdx > 30) {
+					printf("\"..., %llu", regs->rdx);
+				} else {
+					printf("\", %llu", regs->rdx);
+				}
+				free(data);
+			} else {
+				printf("%d, %p, %llu", 
+					(int)regs->rdi, 
+					(void*)regs->rsi, 
+					regs->rdx);
+			}
 			break;
+		}
 		case 257: // openat
-			printf("%d, \"%s\", %s, %d", 
-				(int)regs->rdi, 
+			printf("%s, \"%s\", %s, %d", 
+				(int)regs->rdi == -100 ? "AT_FDCWD" : "unknown",
 				read_string_safe(pid, regs->rsi), 
 				format_open_flags((int)regs->rdx),
 				(int)regs->r10);
 			break;
 		case 21: // access
-			printf("\"%s\", %d", 
+			printf("\"%s\", %s", 
 				read_string_safe(pid, regs->rdi), 
-				(int)regs->rsi);
+				format_access_mode((int)regs->rsi));
 			break;
 		case 79: // getcwd
 			printf("%p, %llu", 
@@ -269,12 +363,40 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			printf("%d, %p", (int)regs->rdi, (void*)regs->rsi);
 			break;
 		case 17: // pread64
-			printf("%d, %p, %llu, %lld", 
-				(int)regs->rdi, 
-				(void*)regs->rsi, 
-				regs->rdx, 
-				(long long)regs->r10);
+		{
+			// For pread64, we want to show binary data representation
+			char *data = read_binary_safe(pid, regs->rsi, regs->rdx);
+			if (data) {
+				// Show first few bytes in hex format like original strace
+				printf("%d, \"", (int)regs->rdi);
+				size_t to_show = regs->rdx > 30 ? 30 : regs->rdx;
+				for (size_t i = 0; i < to_show; i++) {
+					if (data[i] >= 32 && data[i] <= 126) {
+						// Printable ASCII
+						printf("%c", data[i]);
+					} else {
+						// Non-printable, show as hex
+						if (data[i] == '\t') printf("\\t");
+						else if (data[i] == '\n') printf("\\n");
+						else if (data[i] == '\r') printf("\\r");
+						else printf("\\%03o", (unsigned char)data[i]);
+					}
+				}
+				if (regs->rdx > 30) {
+					printf("\"..., %llu, %lld", regs->rdx, (long long)regs->r10);
+				} else {
+					printf("\", %llu, %lld", regs->rdx, (long long)regs->r10);
+				}
+				free(data);
+			} else {
+				printf("%d, %p, %llu, %lld", 
+					(int)regs->rdi, 
+					(void*)regs->rsi, 
+					regs->rdx, 
+					(long long)regs->r10);
+			}
 			break;
+		}
 		case 158: // arch_prctl
 			printf("%d, %p", (int)regs->rdi, (void*)regs->rsi);
 			break;
@@ -308,11 +430,25 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			printf("%p, %llu", (void*)regs->rdi, regs->rsi);
 			break;
 		case 318: // getrandom
-			printf("%p, %llu, %d", 
-				(void*)regs->rdi, 
-				regs->rsi, 
-				(int)regs->rdx);
+		{
+			// For getrandom, we want to show binary data representation
+			char *data = read_binary_safe(pid, regs->rdi, regs->rsi);
+			if (data) {
+				// Show bytes in hex format like original strace
+				printf("\"");
+				for (size_t i = 0; i < regs->rsi; i++) {
+					printf("\\x%02x", (unsigned char)data[i]);
+				}
+				printf("\", %d", (int)regs->rdx);
+				free(data);
+			} else {
+				printf("%p, %llu, %d", 
+					(void*)regs->rdi, 
+					regs->rsi, 
+					(int)regs->rdx);
+			}
 			break;
+		}
 		default:
 			// Print first few parameters as pointers/ints
 			if (regs->rdi != 0) {
