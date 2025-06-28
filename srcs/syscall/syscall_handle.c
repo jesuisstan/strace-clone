@@ -192,11 +192,31 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	// Print parameters based on syscall
 	switch (syscall_no) {
 		case 1: // write
-			printf("%d, \"%s\", %llu", 
-				(int)regs->rdi, 
-				read_string_safe(pid, regs->rsi), 
-				regs->rdx);
+		{
+			char *str = read_string_safe(pid, regs->rsi);
+			if (str) {
+				size_t len = strlen(str);
+				if (len > 30) {
+					// Truncate to 30 characters and add ...
+					str[30] = '\0';
+					printf("%d, \"%s\"..., %llu", 
+						(int)regs->rdi, 
+						str, 
+						regs->rdx);
+				} else {
+					printf("%d, \"%s\", %llu", 
+						(int)regs->rdi, 
+						str, 
+						regs->rdx);
+				}
+				free(str);
+			} else {
+				printf("%d, \"(error)\", %llu", 
+					(int)regs->rdi, 
+					regs->rdx);
+			}
 			break;
+		}
 		case 0: // read
 			printf("%d, %p, %llu", 
 				(int)regs->rdi, 
@@ -332,7 +352,20 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		if (ret == 0) {
 			printf(" = 0");
 		} else {
-			printf(" = %ld", ret);
+			// Check if this syscall typically returns a pointer/address
+			if (syscall_no == 12 || // brk
+				syscall_no == 9 ||  // mmap
+				syscall_no == 11 || // munmap
+				syscall_no == 218 || // set_tid_address
+				syscall_no == 273 || // set_robust_list
+				syscall_no == 334 || // rseq
+				syscall_no == 158 || // arch_prctl
+				syscall_no == 302 || // prlimit64
+				syscall_no == 318) { // getrandom
+				printf(" = 0x%lx", ret);
+			} else {
+				printf(" = %ld", ret);
+			}
 		}
 	}
 	printf("\n");

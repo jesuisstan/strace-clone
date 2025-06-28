@@ -8,6 +8,7 @@
 #include <sys/uio.h>
 
 #define MAX_PRINT_SIZE 32
+#define MAX_DISPLAY_SIZE 30  // Show only 30 chars, then ...
 
 /**
  * @brief Log a memory segment from a remote process
@@ -31,9 +32,12 @@ int log_memseg_remote(pid_t pid, void *remote_ptr, size_t buffer_size)
 		free(buffer);
 		return ft_dprintf(STDERR_FILENO, "%p", remote_ptr);
 	}
-	char *escaped_buffer = ft_escape(buffer, to_read);
+	
+	// For display, we want to show only a reasonable number of characters
+	size_t display_size = to_read > MAX_DISPLAY_SIZE ? MAX_DISPLAY_SIZE : to_read;
+	char *escaped_buffer = ft_escape(buffer, display_size);
 	int size_written;
-	if (buffer_size > MAX_PRINT_SIZE)
+	if (buffer_size > display_size)
 		size_written = ft_dprintf(STDERR_FILENO, "\"%s\"...", escaped_buffer);
 	else
 		size_written = ft_dprintf(STDERR_FILENO, "\"%s\"", escaped_buffer);
