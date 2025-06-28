@@ -13,6 +13,8 @@
 // Global variable to track current syscall number
 int current_syscall_no = -1;
 bool execve_printed = false;
+static int last_execve_ret = -1;
+static unsigned long execve_filename_addr = 0;
 
 /**
  * @brief Read a string from traced process memory safely
@@ -150,32 +152,24 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	// Special handling for execve on entry
 	if (!is_exit && syscall_no == 59) { // execve
 		current_syscall_no = syscall_no;
-		
-		// Only print execve if we haven't printed one yet
-		if (!execve_printed) {
-			// Read filename
-			char *filename = read_string_safe(pid, regs->rdi);
-			if (!filename) {
-				filename = strdup("(error)");
-			}
-			
-			// For now, just print filename. argv and envp are complex to parse
-			printf("execve(\"%s\", ...) = ", filename);
-			fflush(stdout);
-			
-			free(filename);
-			execve_printed = true;
-		}
+		execve_filename_addr = regs->rdi;
 		return;
 	}
 	
-	// Skip execve on exit since we already printed it
+	// Handle execve on exit
 	if (is_exit && syscall_no == 59) { // execve
 		long ret = regs->rax;
+		last_execve_ret = (int)ret;
+		
+		// Only print if this execve succeeded (ret == 0)
 		if (ret == 0) {
-			printf("0\n");
-		} else {
-			printf("?\n");
+			// Read filename from saved address
+			char *filename = read_string_safe(pid, execve_filename_addr);
+			if (!filename) {
+				filename = strdup("(error)");
+			}
+			printf("execve(\"%s\", ...) = 0\n", filename);
+			free(filename);
 		}
 		return;
 	}
