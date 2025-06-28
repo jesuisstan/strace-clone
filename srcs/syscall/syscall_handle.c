@@ -5,121 +5,340 @@
 #include <sys/user.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
-// Функция для безопасного чтения строки из памяти трассируемого процесса
-static char *read_string_from_process(pid_t pid, unsigned long long addr, size_t max_len)
+// Global variable to track current syscall number
+int current_syscall_no = -1;
+bool execve_printed = false;
+
+/**
+ * @brief Read a string from traced process memory safely
+ *
+ * @param pid
+ * @param addr
+ * @return char* allocated string or NULL if error
+ */
+static char *read_string_safe(pid_t pid, unsigned long addr)
 {
-	if (addr == 0) return NULL;
+	if (addr == 0) {
+		return strdup("(null)");
+	}
 	
-	char *buffer = malloc(max_len + 1);
-	if (!buffer) return NULL;
+	char *str = malloc(4096);
+	if (!str) {
+		return NULL;
+	}
 	
-	size_t i = 0;
-	while (i < max_len) {
-		unsigned long long word = ptrace(PTRACE_PEEKDATA, pid, addr + i, NULL);
-		if ((long long)word == -1) {
-			free(buffer);
-			return NULL;
+	memset(str, 0, 4096);
+	
+	// Read data word by word
+	for (int i = 0; i < 1024; i++) {
+		unsigned long word = ptrace(PTRACE_PEEKDATA, pid, addr + i * 8, NULL);
+		if ((long)word == -1 && errno) {
+			free(str);
+			return strdup("(error)");
 		}
 		
-		for (int j = 0; j < 8 && i < max_len; j++) {
-			char c = (word >> (j * 8)) & 0xFF;
-			buffer[i] = c;
-			if (c == '\0') {
-				return buffer;
+		// Copy bytes from word
+		for (int j = 0; j < 8; j++) {
+			char byte = (word >> (j * 8)) & 0xFF;
+			str[i * 8 + j] = byte;
+			if (byte == '\0') {
+				return str;
 			}
-			i++;
 		}
 	}
 	
-	buffer[max_len] = '\0';
-	return buffer;
+	// Truncate if too long
+	str[4095] = '\0';
+	return str;
 }
 
-void syscall_handle(pid_t pid, struct user_regs_struct *regs, struct s_statistics *statistics, int is_syscall_entry)
+/**
+ * @brief Format mmap flags
+ */
+static const char *format_mmap_flags(int flags)
 {
-	unsigned long long syscall_no;
+	static char buf[256];
+	buf[0] = '\0';
 	
-	if (is_syscall_entry) {
-		syscall_no = regs->orig_rax;
-	} else {
-		syscall_no = current_syscall_no;
+	if (flags & MAP_PRIVATE) strcat(buf, "MAP_PRIVATE|");
+	if (flags & MAP_SHARED) strcat(buf, "MAP_SHARED|");
+	if (flags & MAP_ANONYMOUS) strcat(buf, "MAP_ANONYMOUS|");
+	if (flags & MAP_FIXED) strcat(buf, "MAP_FIXED|");
+	if (flags & MAP_DENYWRITE) strcat(buf, "MAP_DENYWRITE|");
+	
+	if (buf[0] == '\0') {
+		return "0";
 	}
 	
-	if (syscall_no > 400) {
+	// Remove trailing |
+	buf[strlen(buf) - 1] = '\0';
+	return buf;
+}
+
+/**
+ * @brief Format mmap protection
+ */
+static const char *format_mmap_prot(int prot)
+{
+	static char buf[256];
+	buf[0] = '\0';
+	
+	if (prot & PROT_READ) strcat(buf, "PROT_READ|");
+	if (prot & PROT_WRITE) strcat(buf, "PROT_WRITE|");
+	if (prot & PROT_EXEC) strcat(buf, "PROT_EXEC|");
+	
+	if (buf[0] == '\0') {
+		return "0";
+	}
+	
+	// Remove trailing |
+	buf[strlen(buf) - 1] = '\0';
+	return buf;
+}
+
+/**
+ * @brief Format open flags
+ */
+static const char *format_open_flags(int flags)
+{
+	static char buf[256];
+	buf[0] = '\0';
+	
+	// Handle access mode flags
+	int access_mode = flags & O_ACCMODE;
+	if (access_mode == O_RDONLY) strcat(buf, "O_RDONLY|");
+	else if (access_mode == O_WRONLY) strcat(buf, "O_WRONLY|");
+	else if (access_mode == O_RDWR) strcat(buf, "O_RDWR|");
+	
+	// Handle other flags
+	if (flags & O_CREAT) strcat(buf, "O_CREAT|");
+	if (flags & O_EXCL) strcat(buf, "O_EXCL|");
+	if (flags & O_TRUNC) strcat(buf, "O_TRUNC|");
+	if (flags & O_APPEND) strcat(buf, "O_APPEND|");
+	if (flags & O_CLOEXEC) strcat(buf, "O_CLOEXEC|");
+	
+	if (buf[0] == '\0') {
+		return "0";
+	}
+	
+	// Remove trailing |
+	buf[strlen(buf) - 1] = '\0';
+	return buf;
+}
+
+/**
+ * @brief Handle syscall logging
+ *
+ * @param pid
+ * @param regs
+ * @param is_exit
+ */
+void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
+{
+	if (!regs) {
 		return;
 	}
 	
-	if (syscall_no == 59 /* execve */ && is_syscall_entry) {
-		// Capture execve on entry since it replaces the process image
-		const syscall_description_t *desc = syscall_get_description(syscall_no, X86_64);
-		if (desc) {
-			// Read the filename from the first argument
-			char *filename = read_string_from_process(pid, regs->rdi, 256);
-			dprintf(STDERR_FILENO, "%s(\"%s\", [\"pwd\"], [/* envp */]) = ", 
-				   desc->name, filename ? filename : "(null)");
-			free(filename);
-			// We can't get the return value since execve replaces the process
-			dprintf(STDERR_FILENO, "?\n");
-		}
-		return;
-	}
+	// Get syscall number
+	int syscall_no = (int)regs->orig_rax;
 	
-	// For all other syscalls, handle entry and exit
-	if (is_syscall_entry) {
-		const syscall_description_t *desc = syscall_get_description(syscall_no, X86_64);
-		if (desc) {
-			dprintf(STDERR_FILENO, "%s(", desc->name);
-			int param_count = 0;
-			for (int i = 0; i < 6; i++) {
-				if (desc->param_types[i] == NONE) {
-					break; // Stop at first NONE parameter
-				}
-				if (param_count > 0) dprintf(STDERR_FILENO, ", ");
-				unsigned long long param = 0;
-				switch (i) {
-					case 0: param = regs->rdi; break;
-					case 1: param = regs->rsi; break;
-					case 2: param = regs->rdx; break;
-					case 3: param = regs->r10; break;
-					case 4: param = regs->r8; break;
-					case 5: param = regs->r9; break;
-				}
-				if (desc->param_types[i] == STRING) {
-					char *str = read_string_from_process(pid, param, 32);
-					if (str) {
-						dprintf(STDERR_FILENO, "\"%s\"", str);
-						free(str);
-					} else {
-						dprintf(STDERR_FILENO, "(null)");
-					}
-				} else if (desc->param_types[i] == POINTER) {
-					if (param == 0) {
-						dprintf(STDERR_FILENO, "NULL");
-					} else {
-						dprintf(STDERR_FILENO, "%p", (void *)param);
-					}
-				} else {
-					dprintf(STDERR_FILENO, "%llu", param);
-				}
-				param_count++;
-			}
-			dprintf(STDERR_FILENO, ") = ");
-		}
-	} else {
-		// On exit: print return value
-		unsigned long long retval = regs->rax;
-		if ((long long)retval < 0) {
-			dprintf(STDERR_FILENO, "-1 %s (%s)\n", ft_errnoname(-(long long)retval), ft_strerror(-(long long)retval));
-		} else {
-			dprintf(STDERR_FILENO, "%llu\n", retval);
-		}
+	// Special handling for execve on entry
+	if (!is_exit && syscall_no == 59) { // execve
+		current_syscall_no = syscall_no;
 		
-		if (statistics) {
-			struct timeval tv;
-			gettimeofday(&tv, NULL);
-			unsigned long long time_us = tv.tv_sec * 1000000ULL + tv.tv_usec;
-			statistics_add_entry(statistics, X86_64, syscall_no, time_us);
+		// Only print execve if we haven't printed one yet
+		if (!execve_printed) {
+			// Read filename
+			char *filename = read_string_safe(pid, regs->rdi);
+			if (!filename) {
+				filename = strdup("(error)");
+			}
+			
+			// For now, just print filename. argv and envp are complex to parse
+			printf("execve(\"%s\", ...) = ", filename);
+			fflush(stdout);
+			
+			free(filename);
+			execve_printed = true;
+		}
+		return;
+	}
+	
+	// Skip execve on exit since we already printed it
+	if (is_exit && syscall_no == 59) { // execve
+		long ret = regs->rax;
+		if (ret == 0) {
+			printf("0\n");
+		} else {
+			printf("?\n");
+		}
+		return;
+	}
+	
+	// Only print on exit to avoid duplication
+	if (!is_exit) {
+		return;
+	}
+	
+	// Get syscall description
+	const char *desc = syscall_get_description(syscall_no);
+	if (!desc) {
+		desc = "unknown";
+	}
+	
+	// Print syscall name and parameters
+	printf("%s(", desc);
+	
+	// Print parameters based on syscall
+	switch (syscall_no) {
+		case 1: // write
+			printf("%d, \"%s\", %llu", 
+				(int)regs->rdi, 
+				read_string_safe(pid, regs->rsi), 
+				regs->rdx);
+			break;
+		case 0: // read
+			printf("%d, %p, %llu", 
+				(int)regs->rdi, 
+				(void*)regs->rsi, 
+				regs->rdx);
+			break;
+		case 257: // openat
+			printf("%d, \"%s\", %s, %d", 
+				(int)regs->rdi, 
+				read_string_safe(pid, regs->rsi), 
+				format_open_flags((int)regs->rdx),
+				(int)regs->r10);
+			break;
+		case 21: // access
+			printf("\"%s\", %d", 
+				read_string_safe(pid, regs->rdi), 
+				(int)regs->rsi);
+			break;
+		case 79: // getcwd
+			printf("%p, %llu", 
+				(void*)regs->rdi, 
+				regs->rsi);
+			break;
+		case 231: // exit_group
+			printf("%d", (int)regs->rdi);
+			break;
+		case 60: // exit
+			printf("%d", (int)regs->rdi);
+			break;
+		case 12: // brk
+			if (regs->rdi == 0) {
+				printf("NULL");
+			} else {
+				printf("%p", (void*)regs->rdi);
+			}
+			break;
+		case 9: // mmap
+			printf("%p, %llu, %s, %s, %d, %lld", 
+				(void*)regs->rdi, 
+				regs->rsi, 
+				format_mmap_prot((int)regs->rdx),
+				format_mmap_flags((int)regs->r10), 
+				(int)regs->r8, 
+				(long long)regs->r9);
+			break;
+		case 3: // close
+			printf("%d", (int)regs->rdi);
+			break;
+		case 5: // fstat
+			printf("%d, %p", (int)regs->rdi, (void*)regs->rsi);
+			break;
+		case 17: // pread64
+			printf("%d, %p, %llu, %lld", 
+				(int)regs->rdi, 
+				(void*)regs->rsi, 
+				regs->rdx, 
+				(long long)regs->r10);
+			break;
+		case 158: // arch_prctl
+			printf("%d, %p", (int)regs->rdi, (void*)regs->rsi);
+			break;
+		case 218: // set_tid_address
+			printf("%p", (void*)regs->rdi);
+			break;
+		case 273: // set_robust_list
+			printf("%p, %llu", (void*)regs->rdi, regs->rsi);
+			break;
+		case 334: // rseq
+			printf("%p, %llu, %d, %d", 
+				(void*)regs->rdi, 
+				regs->rsi, 
+				(int)regs->rdx, 
+				(int)regs->r10);
+			break;
+		case 10: // mprotect
+			printf("%p, %llu, %s", 
+				(void*)regs->rdi, 
+				regs->rsi, 
+				format_mmap_prot((int)regs->rdx));
+			break;
+		case 302: // prlimit64
+			printf("%d, %d, %p, %p", 
+				(int)regs->rdi, 
+				(int)regs->rsi, 
+				(void*)regs->rdx, 
+				(void*)regs->r10);
+			break;
+		case 11: // munmap
+			printf("%p, %llu", (void*)regs->rdi, regs->rsi);
+			break;
+		case 318: // getrandom
+			printf("%p, %llu, %d", 
+				(void*)regs->rdi, 
+				regs->rsi, 
+				(int)regs->rdx);
+			break;
+		default:
+			// Print first few parameters as pointers/ints
+			if (regs->rdi != 0) {
+				printf("%p", (void*)regs->rdi);
+			} else {
+				printf("0");
+			}
+			if (regs->rsi != 0) {
+				printf(", %p", (void*)regs->rsi);
+			}
+			if (regs->rdx != 0) {
+				printf(", %p", (void*)regs->rdx);
+			}
+			if (regs->r10 != 0) {
+				printf(", %p", (void*)regs->r10);
+			}
+			if (regs->r8 != 0) {
+				printf(", %p", (void*)regs->r8);
+			}
+			if (regs->r9 != 0) {
+				printf(", %p", (void*)regs->r9);
+			}
+			break;
+	}
+	
+	printf(")");
+	
+	// Print return value on exit
+	long ret = regs->rax;
+	if (ret < 0) {
+		// Error case
+		printf(" = -1 %s (%s)", 
+			ft_errnoname(-ret), 
+			strerror(-ret));
+	} else {
+		// Success case
+		if (ret == 0) {
+			printf(" = 0");
+		} else {
+			printf(" = %ld", ret);
 		}
 	}
+	printf("\n");
 }

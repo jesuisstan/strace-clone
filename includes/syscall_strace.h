@@ -4,12 +4,13 @@
 #include <sys/types.h>
 #include <sys/user.h>
 #include <types.h>
+#include <stdbool.h>
 
 // Forward declarations
 struct s_statistics;
 
-// Global variable to track current syscall number
-extern unsigned long long current_syscall_no;
+// External variables
+extern bool execve_printed;
 
 typedef enum {
 	NONE = 0,
@@ -24,7 +25,7 @@ typedef struct {
 	param_type_t param_types[6];
 } syscall_description_t;
 
-const syscall_description_t *syscall_get_description(unsigned long long syscall_no, architecture_t arch);
-void syscall_handle(pid_t pid, struct user_regs_struct *regs, struct s_statistics *statistics, int is_syscall_entry);
+const char *syscall_get_description(int syscall_no);
+void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit);
 
 #endif

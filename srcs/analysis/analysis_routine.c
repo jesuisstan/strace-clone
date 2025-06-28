@@ -6,94 +6,62 @@
 #include <sys/ptrace.h>
 #include <sys/user.h>
 #include <signal.h>
-
-unsigned long long current_syscall_no = 0;
+#include <unistd.h>
 
 /**
- * @brief Analysis routine of the tracer
+ * @brief Main analysis routine
  *
- * @param pid the pid of the tracee
- * @return status code of tracee or ROUTINE_ERROR if an error occurred
+ * @param pid
+ * @param statistics
+ * @return int
  */
-int analysis_routine(pid_t pid, struct s_statistics *statistics)
+int analysis_routine(pid_t pid, struct s_statistics *statistics __attribute__((unused)))
 {
 	int status;
-	int is_syscall_entry = 1; // Track if we're on syscall entry or exit
-	
-	// Wait for the process to stop after execvp
-	if (waitpid(pid, &status, 0) == -1) {
-		perror("waitpid");
-		return -1;
-	}
-	
-	if (WIFEXITED(status)) {
-		dprintf(STDERR_FILENO, "+++ exited with %d +++\n", WEXITSTATUS(status));
-		return status;
-	}
-	
-	if (WIFSIGNALED(status)) {
-		dprintf(STDERR_FILENO, "+++ killed by %s +++\n", ft_signalname(WTERMSIG(status)));
-		return status;
-	}
-	
-	// Start tracing syscalls
-	if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) == -1) {
-		perror("ptrace SYSCALL");
-		return -1;
-	}
+	bool is_syscall_entry = true;
 	
 	while (1) {
+		// Wait for the child to stop
 		if (waitpid(pid, &status, 0) == -1) {
 			perror("waitpid");
 			return -1;
 		}
 		
+		// Check if child exited
 		if (WIFEXITED(status)) {
-			dprintf(STDERR_FILENO, "+++ exited with %d +++\n", WEXITSTATUS(status));
+			printf("+++ exited with %d +++\n", WEXITSTATUS(status));
 			return status;
 		}
 		
+		// Check if child was killed by signal
 		if (WIFSIGNALED(status)) {
-			dprintf(STDERR_FILENO, "+++ killed by %s +++\n", ft_signalname(WTERMSIG(status)));
+			printf("+++ killed by %s +++\n", ft_signalname(WTERMSIG(status)));
 			return status;
 		}
 		
+		// Check if child stopped
 		if (WIFSTOPPED(status)) {
-			if (WSTOPSIG(status) == SIGTRAP) {
-				// Handle syscall
+			// Check if it's a syscall stop
+			if (WSTOPSIG(status) == (SIGTRAP | 0x80)) {
+				// Get registers
 				struct user_regs_struct regs;
 				if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
 					perror("ptrace GETREGS");
 					return -1;
 				}
 				
-				if (is_syscall_entry) {
-					current_syscall_no = regs.orig_rax;
-					// On entry: print syscall name and parameters
-					syscall_handle(pid, &regs, statistics, 1);
-					
-					// Special handling for execve - we need to capture it before it replaces the process
-					if (current_syscall_no == 59) { // execve
-						// Continue to let execve execute, but we won't see the exit
-						if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) == -1) {
-							perror("ptrace SYSCALL");
-							return -1;
-						}
-						continue;
-					}
-				} else {
-					// On exit: print return value
-					syscall_handle(pid, &regs, statistics, 0);
-				}
+				// Handle syscall
+				syscall_handle(pid, &regs, !is_syscall_entry);
 				
-				is_syscall_entry = !is_syscall_entry; // Toggle entry/exit
+				// Toggle entry/exit flag
+				is_syscall_entry = !is_syscall_entry;
 			}
-			
-			// Continue to next syscall
-			if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) == -1) {
-				perror("ptrace SYSCALL");
-				return -1;
-			}
+		}
+		
+		// Continue the child
+		if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) == -1) {
+			perror("ptrace SYSCALL");
+			return -1;
 		}
 	}
 }

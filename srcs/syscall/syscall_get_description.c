@@ -339,19 +339,12 @@ static const syscall_description_t x86_64_syscalls[] __attribute__((unused)) = {
     [334] = {"rseq", {POINTER, INTEGER, INTEGER, INTEGER, NONE, NONE}},
 };
 
-const syscall_description_t *syscall_get_description(unsigned long long syscall_no, architecture_t arch)
+const char *syscall_get_description(int syscall_no)
 {
-    if (arch == X86_64 && syscall_no < sizeof(x86_64_syscalls) / sizeof(x86_64_syscalls[0])) {
-        if (x86_64_syscalls[syscall_no].name) {
-            return &x86_64_syscalls[syscall_no];
-        }
-    }
-    
-    // Return a default description for unknown syscalls
-    static const syscall_description_t default_desc = {
-        "unknown",
-        {NONE, NONE, NONE, NONE, NONE, NONE}
-    };
-    
-    return &default_desc;
+    static const char *unknown = "unknown";
+    if (syscall_no < 0 || syscall_no >= (int)(sizeof(x86_64_syscalls)/sizeof(x86_64_syscalls[0])))
+        return unknown;
+    if (!x86_64_syscalls[syscall_no].name)
+        return unknown;
+    return x86_64_syscalls[syscall_no].name;
 }
