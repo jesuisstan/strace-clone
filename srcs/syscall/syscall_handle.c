@@ -432,15 +432,24 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		case 318: // getrandom
 		{
 			// For getrandom, we want to show binary data representation
-			char *data = read_binary_safe(pid, regs->rdi, regs->rsi);
-			if (data) {
-				// Show bytes in hex format like original strace
-				printf("\"");
-				for (size_t i = 0; i < regs->rsi; i++) {
-					printf("\\x%02x", (unsigned char)data[i]);
+			// Use the return value (actual bytes read) instead of requested size
+			long actual_bytes = regs->rax;
+			if (actual_bytes > 0 && actual_bytes <= 64) { // Sanity check
+				char *data = read_binary_safe(pid, regs->rdi, actual_bytes);
+				if (data) {
+					// Show bytes in hex format like original strace
+					printf("\"");
+					for (long i = 0; i < actual_bytes; i++) {
+						printf("\\x%02x", (unsigned char)data[i]);
+					}
+					printf("\", %ld", actual_bytes); // Show actual bytes read
+					free(data);
+				} else {
+					printf("%p, %llu, %d", 
+						(void*)regs->rdi, 
+						regs->rsi, 
+						(int)regs->rdx);
 				}
-				printf("\", %d", (int)regs->rdx);
-				free(data);
 			} else {
 				printf("%p, %llu, %d", 
 					(void*)regs->rdi, 
@@ -496,8 +505,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 				syscall_no == 273 || // set_robust_list
 				syscall_no == 334 || // rseq
 				syscall_no == 158 || // arch_prctl
-				syscall_no == 302 || // prlimit64
-				syscall_no == 318) { // getrandom
+				syscall_no == 302) { // prlimit64
 				printf(" = 0x%lx", ret);
 			} else {
 				printf(" = %ld", ret);
