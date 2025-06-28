@@ -11,8 +11,8 @@ typedef struct {
 } option_t;
 
 static const option_t options[] = {
-	{'c', "count", "Count time, calls, and errors for each syscall and report a summary on program exit"},
 	{'h', "help", "Display this help and exit"},
+	{'c', "count", "Count time, calls, and errors for each syscall and report a summary on program exit"},
 	{'s', "string-limit", "Specify the maximum string length to print"},
 	{'S', "statistics", "Show statistics for each syscall"},
 	{0, NULL, NULL}
@@ -90,13 +90,12 @@ int config_init(config_t *config, int argc, char **argv)
 void config_print_help(const config_t *config)
 {
 	printf("Usage: %s [option(s)] [file(s)]\n", config->program_name);
-	printf(" Display syscalls done by a program.\n");
-	printf(" The options are:\n");
+	printf("\nAvailable options:\n");
 	
 	for (int i = 0; options[i].letter; i++) {
 		printf("  -%c, --%-16s %s\n", options[i].letter, options[i].name,
 			   options[i].description);
 	}
-	
-	printf("\n%s by Theo Matis <tmatis@student.42.fr>\n", config->program_name);
+
+	printf("\nCreated by Stanislav Krivtsoff for educational purpose, Paris, 2025.\n");
 }
