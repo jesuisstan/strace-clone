@@ -2,8 +2,6 @@
 
 #include "param_log.h"
 #include <fcntl.h>
-#include <ft_printf.h>
-#include <macros.h>
 #include <unistd.h>
 
 #define F_GETOWNER_UIDS 17
@@ -25,5 +23,5 @@ static const flag_str_t fcntl_cmds[] = {
  */
 int log_FCNTL_CMD(uint64_t value)
 {
-	return option_log(value, fcntl_cmds, ELEM_COUNT(fcntl_cmds), "F_???");
+	return option_log(value, fcntl_cmds, sizeof(fcntl_cmds) / sizeof(fcntl_cmds[0]), "F_???");
 }

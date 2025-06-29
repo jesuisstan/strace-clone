@@ -1,8 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/file.h>
 #include <unistd.h>
 
@@ -19,5 +17,5 @@ static const flag_str_t flock_cmds[] = {
  */
 int log_FLOCK_CMD(uint64_t value)
 {
-	return option_log(value, flock_cmds, ELEM_COUNT(flock_cmds), "LOCK_???");
+	return option_log(value, flock_cmds, sizeof(flock_cmds) / sizeof(flock_cmds[0]), "LOCK_???");
 }

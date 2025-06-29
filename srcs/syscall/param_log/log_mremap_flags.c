@@ -1,8 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/mman.h>
 
 static const flag_str_t mmap_flags[] = {
@@ -19,5 +17,5 @@ static const flag_str_t mmap_flags[] = {
  */
 int log_MREMAP_FLAGS(uint64_t value)
 {
-	return flags_log(value, mmap_flags, ELEM_COUNT(mmap_flags));
+	return flags_log(value, mmap_flags, sizeof(mmap_flags) / sizeof(mmap_flags[0]));
 }

@@ -1,4 +1,4 @@
-#include <statistics.h>
+#include "statistics.h"
 #include <stdlib.h>
 
 /**
@@ -6,11 +6,12 @@
  *
  * @param statistics the statistics to destroy
  */
-void statistics_destroy(statistics_t *statistics)
+void statistics_destroy(t_statistics *statistics)
 {
-	if (!statistics)
-		return;
-	
-	free(statistics->entries);
-	free(statistics);
+	if (statistics) {
+		if (statistics->entries) {
+			free(statistics->entries);
+		}
+		free(statistics);
+	}
 }

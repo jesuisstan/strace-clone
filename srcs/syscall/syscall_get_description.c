@@ -1,7 +1,7 @@
 #include <syscall_strace.h>
 
 // Basic syscall descriptions for x86_64
-static const syscall_description_t x86_64_syscalls[] __attribute__((unused)) = {
+const syscall_description_t x86_64_syscalls[] = {
     [0] = {"read", {INTEGER, POINTER, INTEGER, NONE, NONE, NONE}},
     [1] = {"write", {INTEGER, POINTER, INTEGER, NONE, NONE, NONE}},
     [2] = {"open", {STRING, INTEGER, INTEGER, NONE, NONE, NONE}},

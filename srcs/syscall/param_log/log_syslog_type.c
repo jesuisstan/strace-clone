@@ -1,8 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <unistd.h>
 
 #define SYSLOG_ACTION_CLOSE 0
@@ -34,5 +32,5 @@ static const flag_str_t syslog_types[] = {
  */
 int log_SYSLOG_TYPE(uint64_t value)
 {
-	return flags_log(value, syslog_types, ELEM_COUNT(syslog_types));
+	return flags_log(value, syslog_types, sizeof(syslog_types) / sizeof(syslog_types[0]));
 }

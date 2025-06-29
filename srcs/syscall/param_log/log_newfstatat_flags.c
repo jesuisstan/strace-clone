@@ -2,7 +2,6 @@
 
 #include "param_log.h"
 #include <fcntl.h>
-#include <macros.h>
 
 static const flag_str_t newfstatat_flags[] = {
 	FLAG_STR(AT_EMPTY_PATH),
@@ -13,5 +12,5 @@ static const flag_str_t newfstatat_flags[] = {
 
 int log_NEWFSTATAT_FLAGS(uint64_t value)
 {
-	return flags_log(value, newfstatat_flags, ELEM_COUNT(newfstatat_flags));
+	return flags_log(value, newfstatat_flags, sizeof(newfstatat_flags) / sizeof(newfstatat_flags[0]));
 }

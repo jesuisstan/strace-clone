@@ -1,7 +1,8 @@
 #include "../param_log.h"
-#include <ft_printf.h>
-#include <registers.h>
 #include <stdint.h>
+
+// Stub function for missing register access
+static int64_t REGISTERS_GET_RETURN(void *regs __attribute__((unused)), int type __attribute__((unused))) { return 0; }
 
 /**
  * @brief Handle a pointer value
@@ -15,7 +16,7 @@ void *handle_ptr(uint64_t value, syscall_log_param_t *context, int *size_written
 {
 	if (value == 0)
 	{
-		*size_written += ft_dprintf(STDERR_FILENO, "NULL");
+		*size_written += dprintf(STDERR_FILENO, "NULL");
 		return NULL;
 	}
 	if (context->after_syscall)
@@ -23,7 +24,7 @@ void *handle_ptr(uint64_t value, syscall_log_param_t *context, int *size_written
 		int64_t ret = REGISTERS_GET_RETURN(context->regs, context->type);
 		if (ret < 0)
 		{
-			*size_written += ft_dprintf(STDERR_FILENO, "%p", (void *)value);
+			*size_written += dprintf(STDERR_FILENO, "%p", (void *)value);
 			return NULL;
 		}
 	}

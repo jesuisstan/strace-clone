@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <macros.h>
 #include <sys/resource.h>
 #include <sys/time.h>
 
@@ -19,5 +18,5 @@ static const flag_str_t rusage_who[] = {
  */
 int log_RUSAGE_WHO(uint64_t value)
 {
-	return option_log(value, rusage_who, ELEM_COUNT(rusage_who), "RUSAGE_???");
+	return option_log(value, rusage_who, sizeof(rusage_who) / sizeof(rusage_who[0]), "RUSAGE_???");
 }

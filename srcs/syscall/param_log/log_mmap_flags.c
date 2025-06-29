@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/mman.h>
 
 static const flag_str_t mmap_flags[] = {
@@ -20,6 +18,6 @@ static const flag_str_t mmap_flags[] = {
 int log_MMAP_FLAGS(uint64_t value)
 {
 	if (value == 0)
-		return ft_dprintf(STDERR_FILENO, "MAP_FILE");
-	return flags_log(value, mmap_flags, ELEM_COUNT(mmap_flags));
+		return printf("MAP_FILE");
+	return flags_log(value, mmap_flags, sizeof(mmap_flags) / sizeof(mmap_flags[0]));
 }

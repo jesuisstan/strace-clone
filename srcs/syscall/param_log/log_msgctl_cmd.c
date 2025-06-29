@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
@@ -18,5 +16,5 @@ static const flag_str_t msgctl_cmd[] = {
  */
 int log_MSGCTL_CMD(uint64_t value)
 {
-	return option_log(value, msgctl_cmd, ELEM_COUNT(msgctl_cmd), "IPC_???");
+	return option_log(value, msgctl_cmd, sizeof(msgctl_cmd) / sizeof(msgctl_cmd[0]), "IPC_???");
 }

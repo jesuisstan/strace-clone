@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <macros.h>
 #include <sys/prctl.h>
 
 static const flag_str_t prctl_option_flags[] = {
@@ -57,5 +56,5 @@ static const flag_str_t prctl_option_flags[] = {
 
 int log_PRCTL_OPTION(uint64_t value)
 {
-	return option_log(value, prctl_option_flags, ELEM_COUNT(prctl_option_flags), "ARCH_???");
+	return option_log(value, prctl_option_flags, sizeof(prctl_option_flags) / sizeof(prctl_option_flags[0]), "ARCH_???");
 }

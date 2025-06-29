@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -22,5 +20,5 @@ static const flag_str_t send_flags[] = {
  */
 int log_SEND_FLAGS(uint64_t value)
 {
-	return flags_log(value, send_flags, ELEM_COUNT(send_flags));
+	return flags_log(value, send_flags, sizeof(send_flags) / sizeof(send_flags[0]));
 }

@@ -1,5 +1,5 @@
-#include <ft_strace_utils.h>
-#include <config.h>
+#include "ft_strace_utils.h"
+#include "config.h"
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -13,14 +13,10 @@
  */
 void log_error(const char *context, const char *message, int show_error)
 {
-	config_t *config = NULL; // We'll need to pass this as parameter
-	
-	dprintf(STDERR_FILENO, "%s: %s: %s", 
-		   config ? config->program_name : "ft_strace", 
-		   context, message);
+	dprintf(STDERR_FILENO, "ft_strace: %s: %s", context, message);
 	
 	if (show_error) {
-		int saved_errno = errno;
+	int saved_errno = errno;
 		dprintf(STDERR_FILENO, ": %s", strerror(saved_errno));
 	}
 	

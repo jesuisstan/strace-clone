@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -18,5 +16,5 @@ static const flag_str_t socket_types[] = {
  */
 int log_SOCKET_TYPE(uint64_t value)
 {
-	return flags_log(value, socket_types, ELEM_COUNT(socket_types));
+	return flags_log(value, socket_types, sizeof(socket_types) / sizeof(socket_types[0]));
 }

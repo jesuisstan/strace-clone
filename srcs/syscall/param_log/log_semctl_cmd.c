@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/sem.h>
 
 static const flag_str_t semctl_cmd[] = {
@@ -17,5 +15,5 @@ static const flag_str_t semctl_cmd[] = {
  */
 int log_SEMCTL_CMD(uint64_t value)
 {
-	return option_log(value, semctl_cmd, ELEM_COUNT(semctl_cmd), "IPC_???");
+	return option_log(value, semctl_cmd, sizeof(semctl_cmd) / sizeof(semctl_cmd[0]), "IPC_???");
 }

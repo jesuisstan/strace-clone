@@ -1,9 +1,7 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
 #include <ft_strace_utils.h>
-#include <macros.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
@@ -22,6 +20,6 @@ int log_PIPEFDS(uint64_t value, syscall_log_param_t *context)
 		return size_written;
 	int fds[2];
 	if (remote_memcpy(fds, context->pid, remote_ptr, sizeof(fds)) < 0)
-		return ft_dprintf(STDERR_FILENO, "%p", remote_ptr);
-	return ft_dprintf(STDERR_FILENO, "[%ld, %ld]", fds[0], fds[1]);
+		return dprintf(STDERR_FILENO, "%p", remote_ptr);
+	return dprintf(STDERR_FILENO, "[%d, %d]", fds[0], fds[1]);
 }

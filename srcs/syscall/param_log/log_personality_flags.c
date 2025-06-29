@@ -1,7 +1,5 @@
 #define _GNU_SOURCE
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/personality.h>
 
 static const flag_str_t personalities[] = {
@@ -25,5 +23,5 @@ static const flag_str_t personalities[] = {
 
 int log_PERSONALITY_FLAGS(uint64_t value)
 {
-	return flags_log(value, personalities, ELEM_COUNT(personalities));
+	return flags_log(value, personalities, sizeof(personalities) / sizeof(personalities[0]));
 }

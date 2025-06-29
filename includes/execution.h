@@ -1,9 +1,9 @@
 #ifndef EXECUTION_H
 # define EXECUTION_H
 
-#include <config.h>
-#include <types.h>
 #include <sys/types.h>
+#include <config.h>
+#include <statistics.h>
 
 // Forward declarations
 struct s_statistics;
@@ -12,13 +12,13 @@ struct s_statistics;
 #define EXEC_CHILD_END -2
 
 /**
- * @brief Execute a program
+ * @brief Execute the program to be traced
  *
- * @param config
- * @param statistics
- * @return the pid of the child process or EXEC_ERROR if an error occurred
+ * @param config the configuration structure
+ * @param statistics optional statistics structure
+ * @return int 0 if the call succeeded, -1 otherwise
  */
-int exec_program(const config_t *config, struct s_statistics *statistics);
+int exec_program(const t_config *config, t_statistics *statistics);
 
 /**
  * @brief Setup tracing for tracee

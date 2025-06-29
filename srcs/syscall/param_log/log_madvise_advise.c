@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/mman.h>
 
 static const flag_str_t madvise_options[] = {
@@ -18,5 +16,5 @@ static const flag_str_t madvise_options[] = {
  */
 int log_MADVISE_ADVISE(uint64_t value)
 {
-	return option_log(value, madvise_options, ELEM_COUNT(madvise_options), "MADV_???");
+	return option_log(value, madvise_options, sizeof(madvise_options) / sizeof(madvise_options[0]), "MADV_???");
 }

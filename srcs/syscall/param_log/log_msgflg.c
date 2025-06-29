@@ -1,8 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/msg.h>
 
 static const flag_str_t flags[] = {
@@ -20,5 +18,5 @@ static const flag_str_t flags[] = {
  */
 int log_MSGFLG(uint64_t value)
 {
-	return flags_log(value, flags, ELEM_COUNT(flags));
+	return flags_log(value, flags, sizeof(flags) / sizeof(flags[0]));
 }

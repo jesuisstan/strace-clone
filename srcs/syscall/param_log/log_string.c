@@ -1,11 +1,8 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
 #include <ft_strace_utils.h>
-#include <ft_string.h>
-#include <registers.h>
-#include <sys/uio.h>
+																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																			#include <sys/uio.h>
 
 #define DEFAULT_BUFFER_SIZE 32
 
@@ -42,7 +39,7 @@ static void buffer_add_char(buffer_t *buffer, char c)
 int log_remote_string(pid_t pid, char *remote_str, int max_size)
 {
 	if (remote_str == NULL)
-		return ft_dprintf(STDERR_FILENO, "NULL");
+		return dprintf(STDERR_FILENO, "NULL");
 	buffer_t buffer = {
 		.buffer = malloc(DEFAULT_BUFFER_SIZE),
 		.size_buffer = DEFAULT_BUFFER_SIZE,
@@ -77,9 +74,9 @@ int log_remote_string(pid_t pid, char *remote_str, int max_size)
 	char *escaped_buffer = ft_escape(buffer.buffer, buffer.index - 1);
 	int written_bytes = 0;
 	if (max_size != NO_SIZE && buffer.index >= (uint)max_size)
-		written_bytes += ft_dprintf(STDERR_FILENO, "\"%s\"...", escaped_buffer);
+		written_bytes += dprintf(STDERR_FILENO, "\"%s\"...", escaped_buffer);
 	else
-		written_bytes += ft_dprintf(STDERR_FILENO, "\"%s\"", escaped_buffer);
+		written_bytes += dprintf(STDERR_FILENO, "\"%s\"", escaped_buffer);
 	free(escaped_buffer);
 	free(buffer.buffer);
 	return written_bytes;

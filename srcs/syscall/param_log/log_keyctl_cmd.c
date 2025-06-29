@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 
 /* keyctl commands */
 #define KEYCTL_GET_KEYRING_ID 0		  /* ask for a keyring's ID */
@@ -55,5 +53,5 @@ static const flag_str_t keyctl_cmds[] = {
 
 int log_KEYCTL_CMD(uint64_t value)
 {
-	return option_log(value, keyctl_cmds, ELEM_COUNT(keyctl_cmds), "KEYCTL_???");
+	return option_log(value, keyctl_cmds, sizeof(keyctl_cmds) / sizeof(keyctl_cmds[0]), "KEYCTL_???");
 }

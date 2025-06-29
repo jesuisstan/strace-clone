@@ -5,20 +5,26 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+// Global variable to track statistics mode
+bool g_statistics_mode = false;
+
 int main(int argc, char **argv)
 {
-	config_t config;
-	struct s_statistics *statistics = NULL;
-	
-	if (config_init(&config, argc, argv) != 0)
+	t_config config = {0};
+	t_statistics *statistics = NULL;
+
+	// Parse command line arguments
+	if (config_parse(&config, argc, argv) != 0) {
 		return 1;
+	}
 	
 	if (config.show_help) {
 		config_print_help(&config);
 		return 0;
 	}
 	
-	if (config.show_statistics) {
+	if (config.statistics) {
+		g_statistics_mode = true;
 		statistics = statistics_init();
 		if (!statistics) {
 			fprintf(stderr, "Failed to initialize statistics\n");

@@ -1,5 +1,5 @@
 #include "../param_log.h"
-#include <ft_printf.h>
+#include <stdbool.h>
 
 /**
  * @brief Log a set of flags
@@ -12,16 +12,16 @@
 int flags_log(uint64_t flags, const flag_str_t *flag_strs, size_t flag_strs_size)
 {
 	if (flags == 0)
-		return ft_dprintf(STDERR_FILENO, "0");
+		return dprintf(STDERR_FILENO, "0");
 	int size_written = 0;
-	bool_t first = true;
+	bool first = true;
 	for (size_t i = 0; i < flag_strs_size; i++)
 	{
 		if (flags & flag_strs[i].flag)
 		{
 			if (!first)
-				size_written += ft_dprintf(STDERR_FILENO, "|");
-			size_written += ft_dprintf(STDERR_FILENO, "%s", flag_strs[i].str);
+				size_written += dprintf(STDERR_FILENO, "|");
+			size_written += dprintf(STDERR_FILENO, "%s", flag_strs[i].str);
 			first = false;
 			flags &= ~flag_strs[i].flag;
 		}
@@ -29,8 +29,8 @@ int flags_log(uint64_t flags, const flag_str_t *flag_strs, size_t flag_strs_size
 	if (flags != 0)
 	{
 		if (!first)
-			size_written += ft_dprintf(STDERR_FILENO, "|");
-		size_written += ft_dprintf(STDERR_FILENO, "%#llx", flags);
+			size_written += dprintf(STDERR_FILENO, "|");
+		size_written += dprintf(STDERR_FILENO, "%#lx", flags);
 	}
 	return size_written;
 }

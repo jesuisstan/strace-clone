@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/socket.h>
 
 static const flag_str_t shutdown_how_flags[] = {
@@ -16,5 +14,5 @@ static const flag_str_t shutdown_how_flags[] = {
  */
 int log_SHUTDOWN_HOW(uint64_t value)
 {
-	return option_log(value, shutdown_how_flags, ELEM_COUNT(shutdown_how_flags), "SHUT_???");
+	return option_log(value, shutdown_how_flags, sizeof(shutdown_how_flags) / sizeof(shutdown_how_flags[0]), "SHUT_???");
 }

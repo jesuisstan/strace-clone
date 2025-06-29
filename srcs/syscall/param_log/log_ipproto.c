@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
@@ -23,5 +21,5 @@ static const flag_str_t ip_protos[] = {
  */
 int log_IPPROTO(uint64_t value)
 {
-	return option_log(value, ip_protos, ELEM_COUNT(ip_protos), "IPPROTO_???");
+	return option_log(value, ip_protos, sizeof(ip_protos) / sizeof(ip_protos[0]), "IPPROTO_???");
 }

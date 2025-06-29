@@ -1,5 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
@@ -14,7 +13,7 @@
 int log_MSQID_DS_STRUCT(uint64_t value, syscall_log_param_t *context)
 {
 	STRUCT_HANDLE(struct msqid_ds, msgid_ds);
-	return ft_dprintf(
+	return dprintf(
 		STDERR_FILENO,
 		"{msg_perm={uid=%d, gid=%d, mode=%#o, key=%#x, cuid=%d, cgid=%d}, msg_stime=%ld, "
 		"msg_rtime=%ld, msg_ctime=%ld, msg_qnum=%ld, msg_qbytes=%ld, msg_lspid=%d, msg_lrpid=%d}",

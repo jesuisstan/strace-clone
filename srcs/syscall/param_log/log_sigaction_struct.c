@@ -1,9 +1,7 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
 #include <ft_strace_utils.h>
-#include <macros.h>
 #include <signal.h>
 #include <sys/uio.h>
 
@@ -28,10 +26,10 @@ static const flag_str_t sa_flags_str[] = {
 static int log_sa_handler(__sighandler_t handler)
 {
 	if (handler == SIG_DFL)
-		return ft_dprintf(STDERR_FILENO, "SIG_DFL");
+		return dprintf(STDERR_FILENO, "SIG_DFL");
 	if (handler == SIG_IGN)
-		return ft_dprintf(STDERR_FILENO, "SIG_IGN");
-	return ft_dprintf(STDERR_FILENO, "%p", handler);
+		return dprintf(STDERR_FILENO, "SIG_IGN");
+	return dprintf(STDERR_FILENO, "%p", handler);
 }
 
 /**
@@ -44,17 +42,17 @@ int log_SIGACTION_STRUCT(uint64_t value, syscall_log_param_t *context)
 {
 	STRUCT_HANDLE(struct kernel_sigaction, sigaction);
 	int size_written = 0;
-	size_written += ft_dprintf(STDERR_FILENO, "{sa_handler=");
+	size_written += dprintf(STDERR_FILENO, "{sa_handler=");
 	size_written += log_sa_handler(sigaction._sa_handler);
-	size_written += ft_dprintf(STDERR_FILENO, ", sa_mask=");
+	size_written += dprintf(STDERR_FILENO, ", sa_mask=");
 	size_written += log_local_sigset_struct(&sigaction.sa_mask);
-	size_written += ft_dprintf(STDERR_FILENO, ", sa_flags=");
-	size_written += flags_log(sigaction.sa_flags, sa_flags_str, ELEM_COUNT(sa_flags_str));
+	size_written += dprintf(STDERR_FILENO, ", sa_flags=");
+	size_written += flags_log(sigaction.sa_flags, sa_flags_str, sizeof(sa_flags_str) / sizeof(sa_flags_str[0]));
 	if (sigaction.sa_flags & SA_RESTORER)
 	{
-		size_written += ft_dprintf(STDERR_FILENO, ", sa_restorer=");
+		size_written += dprintf(STDERR_FILENO, ", sa_restorer=");
 		size_written += log_PTR((uint64_t)sigaction.sa_restorer);
 	}
-	size_written += ft_dprintf(STDERR_FILENO, "}");
+	size_written += dprintf(STDERR_FILENO, "}");
 	return size_written;
 }

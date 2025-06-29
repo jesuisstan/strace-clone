@@ -7,29 +7,30 @@
 
 typedef struct s_statistics_entry {
 	unsigned long long syscall_no;
-	unsigned long long count;
+	unsigned long long call_count;
 	unsigned long long total_time;
-} statistics_entry_t;
+	int error_count;
+} t_statistics_entry;
 
 typedef struct s_statistics {
-	statistics_entry_t *entries;
+	t_statistics_entry *entries;
 	size_t count;
 	size_t capacity;
-} statistics_t;
+} t_statistics;
 
 /**
  * @brief Initialize statistics structure
  *
- * @return statistics_t* the statistics structure or NULL if an error occurred
+ * @return t_statistics* the statistics structure or NULL if an error occurred
  */
-statistics_t *statistics_init(void);
+t_statistics *statistics_init(void);
 
 /**
  * @brief Destroy statistics structure
  *
  * @param statistics the statistics structure to destroy
  */
-void statistics_destroy(statistics_t *statistics);
+void statistics_destroy(t_statistics *statistics);
 
 /**
  * @brief Add an entry to statistics
@@ -40,7 +41,7 @@ void statistics_destroy(statistics_t *statistics);
  * @param time the time taken by the syscall
  * @return int 0 if the call succeeded, -1 otherwise
  */
-int statistics_add_entry(statistics_t *statistics, architecture_t type,
+int statistics_add_entry(t_statistics *statistics, architecture_t type,
 						unsigned long long syscall_no, unsigned long long time);
 
 /**
@@ -49,9 +50,9 @@ int statistics_add_entry(statistics_t *statistics, architecture_t type,
  * @param statistics the statistics structure
  * @param type the architecture type
  * @param syscall_no the syscall number
- * @return statistics_entry_t* the statistics entry or NULL if not found
+ * @return t_statistics_entry* the statistics entry or NULL if not found
  */
-statistics_entry_t *statistics_get(statistics_t *statistics, architecture_t type,
+t_statistics_entry *statistics_get(t_statistics *statistics, architecture_t type,
 								 unsigned long long syscall_no);
 
 /**
@@ -59,6 +60,6 @@ statistics_entry_t *statistics_get(statistics_t *statistics, architecture_t type
  *
  * @param statistics the statistics structure
  */
-void statistics_log(statistics_t *statistics);
+void statistics_log(t_statistics *statistics);
 
 #endif

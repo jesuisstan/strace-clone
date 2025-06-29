@@ -8,145 +8,63 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <stdbool.h>
+#include "param_log/param_log.h"
 
 // Function prototypes
 static char *read_string_via_proc(pid_t pid, unsigned long addr);
 
 // Global variable to track current syscall number
-int current_syscall_no = -1;
+static int current_syscall_no = -1;
+char *execve_filename = NULL;
+
+// Global variable to track statistics mode
+extern bool g_statistics_mode;
+
 bool execve_printed = false;
-static int last_execve_ret = -1;
-static char *execve_filename = NULL;
+bool execve_success = false;
+failed_execve_t last_failed_execve = {0};
 
-/**
- * @brief Read binary data from traced process memory safely (simplified version)
- *
- * @param pid
- * @param addr
- * @param size
- * @return char* allocated data or NULL if error
- */
-static char *read_binary_safe(pid_t pid, unsigned long addr, size_t size)
-{
-	(void)pid; // Suppress unused parameter warning
-	(void)size; // Suppress unused parameter warning
-	
-	if (addr == 0) {
-		return strdup("(null)");
+// --- For execve: save parameters on entry ---
+static char *execve_filename_in = NULL;
+static unsigned long execve_argv_in = 0;
+static unsigned long execve_envp_in = 0;
+static int execve_argc_in = 0;
+static int execve_envc_in = 0;
+
+void print_execve(pid_t pid, const char *filename, unsigned long argv_ptr, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err) {
+	printf("execve(\"%s\", [", filename);
+	for (int i = 0; i < arg_count; ++i) {
+		unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, argv_ptr + i * sizeof(unsigned long), NULL);
+		if (ptr == 0) break;
+		if (i > 0) printf(", ");
+		char *arg_str = read_string_via_proc(pid, ptr);
+		if (arg_str) {
+			printf("\"%s\"", arg_str);
+			free(arg_str);
+		} else {
+			printf("(null)");
+		}
 	}
-	
-	// Since we can't read memory with allowed ptrace options,
-	// return a placeholder indicating the address
-	char *result = malloc(64);
-	if (!result) {
-		return NULL;
+	printf("] , %p /* %d vars */) = ", (void*)envp_ptr, env_count);
+	if (ret < 0) {
+		printf("-1 (%s)\n", strerror(err));
+	} else {
+		printf("%ld\n", ret);
 	}
-	
-	snprintf(result, 64, "0x%lx", addr);
-	return result;
 }
 
-/**
- * @brief Format mmap flags
- */
-static const char *format_mmap_flags(int flags)
-{
-	static char buf[256];
-	buf[0] = '\0';
-	
-	if (flags & MAP_PRIVATE) strcat(buf, "MAP_PRIVATE|");
-	if (flags & MAP_SHARED) strcat(buf, "MAP_SHARED|");
-	if (flags & MAP_ANONYMOUS) strcat(buf, "MAP_ANONYMOUS|");
-	if (flags & MAP_FIXED) strcat(buf, "MAP_FIXED|");
-	if (flags & MAP_DENYWRITE) strcat(buf, "MAP_DENYWRITE|");
-	
-	if (buf[0] == '\0') {
-		return "0";
+// Helper to print pointer/special values in strace style
+static void print_ptr_special(unsigned long long value) {
+	if (value == 0) {
+		printf("NULL");
+	} else if (value == (unsigned long long)-1 || value == 0xFFFFFFFFFFFFFFFFull || value == 0xFFFFFFFFul) {
+		printf("-1");
+	} else if (value == 0xFFFFFFFFFFFFFF9Cull || value == 0xFFFFFF9Cul) {
+		printf("AT_FDCWD");
+	} else {
+		printf("0x%llx", value);
 	}
-	
-	// Remove trailing |
-	buf[strlen(buf) - 1] = '\0';
-	return buf;
-}
-
-/**
- * @brief Format mmap protection
- */
-static const char *format_mmap_prot(int prot)
-{
-	static char buf[256];
-	buf[0] = '\0';
-	
-	if (prot & PROT_READ) strcat(buf, "PROT_READ|");
-	if (prot & PROT_WRITE) strcat(buf, "PROT_WRITE|");
-	if (prot & PROT_EXEC) strcat(buf, "PROT_EXEC|");
-	
-	if (buf[0] == '\0') {
-		return "0";
-	}
-	
-	// Remove trailing |
-	buf[strlen(buf) - 1] = '\0';
-	return buf;
-}
-
-/**
- * @brief Format access mode flags
- */
-static const char *format_access_mode(int mode)
-{
-	static char buf[256];
-	buf[0] = '\0';
-	
-	if (mode == 0) strcat(buf, "F_OK|");
-	else if (mode == 1) strcat(buf, "X_OK|");
-	else if (mode == 2) strcat(buf, "W_OK|");
-	else if (mode == 4) strcat(buf, "R_OK|");
-	else if (mode == 6) strcat(buf, "R_OK|W_OK|");
-	else if (mode == 5) strcat(buf, "R_OK|X_OK|");
-	else if (mode == 7) strcat(buf, "R_OK|W_OK|X_OK|");
-	else {
-		sprintf(buf, "%d", mode);
-		return buf;
-	}
-	
-	if (buf[0] == '\0') {
-		return "0";
-	}
-	
-	// Remove trailing |
-	buf[strlen(buf) - 1] = '\0';
-	return buf;
-}
-
-/**
- * @brief Format open flags
- */
-static const char *format_open_flags(int flags)
-{
-	static char buf[256];
-	buf[0] = '\0';
-	
-	// Handle access mode flags
-	int access_mode = flags & O_ACCMODE;
-	if (access_mode == O_RDONLY) strcat(buf, "O_RDONLY|");
-	else if (access_mode == O_WRONLY) strcat(buf, "O_WRONLY|");
-	else if (access_mode == O_RDWR) strcat(buf, "O_RDWR|");
-	
-	// Handle other flags
-	if (flags & O_CREAT) strcat(buf, "O_CREAT|");
-	if (flags & O_EXCL) strcat(buf, "O_EXCL|");
-	if (flags & O_TRUNC) strcat(buf, "O_TRUNC|");
-	if (flags & O_APPEND) strcat(buf, "O_APPEND|");
-	if (flags & O_CLOEXEC) strcat(buf, "O_CLOEXEC|");
-	
-	if (buf[0] == '\0') {
-		return "0";
-	}
-	
-	// Remove trailing |
-	buf[strlen(buf) - 1] = '\0';
-	return buf;
 }
 
 /**
@@ -161,274 +79,154 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	if (!regs) {
 		return;
 	}
-	
-	// Get syscall number
 	int syscall_no = (int)regs->orig_rax;
+
+	// On entry to execve, save parameters for later use (since memory will be replaced after execve)
+	if (syscall_no == 59 && !is_exit) {
+		if (execve_filename_in) { free(execve_filename_in); execve_filename_in = NULL; }
+		execve_filename_in = read_string_via_proc(pid, regs->rdi);
+		execve_argv_in = regs->rsi;
+		execve_envp_in = regs->rdx;
+		// Count arguments
+		execve_argc_in = 0;
+		if (execve_argv_in) {
+			while (1) {
+				unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, execve_argv_in + execve_argc_in * sizeof(unsigned long), NULL);
+				if (ptr == 0) break;
+				execve_argc_in++;
+			}
+		}
+		execve_envc_in = 0;
+		if (execve_envp_in) {
+			while (1) {
+				unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, execve_envp_in + execve_envc_in * sizeof(unsigned long), NULL);
+				if (ptr == 0) break;
+				execve_envc_in++;
+			}
+		}
+		return;
+	}
+
+	if (!is_exit)
+		return;
 	
 	// Special handling for execve on entry
-	if (!is_exit && syscall_no == 59) { // execve
+	if (syscall_no == 59) { // execve
 		current_syscall_no = syscall_no;
-		
-		// Store the filename for later use
 		if (execve_filename) {
 			free(execve_filename);
 		}
-		// Try to read the filename from memory
 		execve_filename = read_string_via_proc(pid, regs->rdi);
 		if (!execve_filename) {
 			execve_filename = strdup("(error)");
 		}
+	}
+	
+	if (g_statistics_mode) {
 		return;
 	}
 	
-	// Handle execve on exit
-	if (is_exit && syscall_no == 59) { // execve
+	const char *name = syscall_get_description(syscall_no);
+	if (!name) name = "unknown";
+	
+	// Try to get parameter types
+	extern const syscall_description_t x86_64_syscalls[];
+	const syscall_description_t *desc = NULL;
+	if (syscall_no >= 0 && syscall_no < 335) {
+		desc = &x86_64_syscalls[syscall_no];
+	}
+	
+	unsigned long long args[6] = {
+		regs->rdi,
+		regs->rsi,
+		regs->rdx,
+		regs->r10,
+		regs->r8,
+		regs->r9
+	};
+	
+	// Filtered execve output: print only the first successful execve or the last failed one
+	if (syscall_no == 59) {
 		long ret = regs->rax;
-		last_execve_ret = (int)ret;
-		
-		// Only print if this execve succeeded (ret == 0)
-		if (ret == 0) {
-			printf("execve(\"%s\", ...) = 0\n", execve_filename ? execve_filename : "(error)");
+		int err = -ret;
+		if (ret == 0 && !execve_success) {
+			// First successful execve
+			print_execve(pid, execve_filename_in ? execve_filename_in : "(error)", execve_argv_in, execve_envp_in, execve_argc_in, execve_envc_in, ret, err);
+			execve_success = true;
+			if (last_failed_execve.filename) { free(last_failed_execve.filename); last_failed_execve.filename = NULL; }
+		} else if (ret < 0) {
+			// Save the last failed execve
+			if (last_failed_execve.filename) free(last_failed_execve.filename);
+			last_failed_execve.filename = execve_filename_in ? strdup(execve_filename_in) : NULL;
+			last_failed_execve.argv_ptr = execve_argv_in;
+			last_failed_execve.envp_ptr = execve_envp_in;
+			last_failed_execve.arg_count = execve_argc_in;
+			last_failed_execve.env_count = execve_envc_in;
+			last_failed_execve.err = err;
+			last_failed_execve.valid = true;
 		}
+		if (execve_filename_in) { free(execve_filename_in); execve_filename_in = NULL; }
 		return;
 	}
 	
-	// Only print on exit to avoid duplication
-	if (!is_exit) {
-		return;
-	}
-	
-	// Get syscall description
-	const char *desc = syscall_get_description(syscall_no);
-	if (!desc) {
-		desc = "unknown";
-	}
-	
-	// Print syscall name and parameters
-	printf("%s(", desc);
-	
-	// Print parameters based on syscall
-	switch (syscall_no) {
-		case 1: // write
-		{
-			char *str = read_string_via_proc(pid, regs->rsi);
-			if (str && strlen(str) > 0 && strlen(str) < 50) {
-				printf("%d, \"%s\", %llu", 
-					(int)regs->rdi, 
-					str, 
-					regs->rdx);
-				free(str);
-			} else {
-				if (str) free(str);
-				printf("%d, %p, %llu", 
-					(int)regs->rdi, 
-					(void*)regs->rsi, 
-					regs->rdx);
-			}
-			break;
-		}
-		case 0: // read
-		{
-			printf("%d, %p, %llu", 
-				(int)regs->rdi, 
-				(void*)regs->rsi, 
-				regs->rdx);
-			break;
-		}
-		case 257: // openat
-		{
-			char *str = read_string_via_proc(pid, regs->rsi);
-			if (str && strlen(str) > 0 && strlen(str) < 100) {
-				printf("%s, \"%s\", %s, %d", 
-					(int)regs->rdi == -100 ? "AT_FDCWD" : "unknown",
-					str, 
-					format_open_flags((int)regs->rdx),
-					(int)regs->r10);
-				free(str);
-			} else {
-				if (str) free(str);
-				printf("%s, %p, %s, %d", 
-					(int)regs->rdi == -100 ? "AT_FDCWD" : "unknown",
-					(void*)regs->rsi, 
-					format_open_flags((int)regs->rdx),
-					(int)regs->r10);
-			}
-			break;
-		}
-		case 21: // access
-		{
-			char *str = read_string_via_proc(pid, regs->rdi);
-			if (str && strlen(str) > 0 && strlen(str) < 100) {
-				printf("\"%s\", %s", 
-					str, 
-					format_access_mode((int)regs->rsi));
-				free(str);
-			} else {
-				if (str) free(str);
-				printf("%p, %s", 
-					(void*)regs->rdi, 
-					format_access_mode((int)regs->rsi));
-			}
-			break;
-		}
-		case 79: // getcwd
-			printf("%p, %llu", 
-				(void*)regs->rdi, 
-				regs->rsi);
-			break;
-		case 231: // exit_group
-			printf("%d", (int)regs->rdi);
-			break;
-		case 60: // exit
-			printf("%d", (int)regs->rdi);
-			break;
-		case 12: // brk
-			if (regs->rdi == 0) {
-				printf("NULL");
-			} else {
-				printf("%p", (void*)regs->rdi);
-			}
-			break;
-		case 9: // mmap
-			printf("%p, %llu, %s, %s, %d, %lld", 
-				(void*)regs->rdi, 
-				regs->rsi, 
-				format_mmap_prot((int)regs->rdx),
-				format_mmap_flags((int)regs->r10), 
-				(int)regs->r8, 
-				(long long)regs->r9);
-			break;
-		case 3: // close
-			printf("%d", (int)regs->rdi);
-			break;
-		case 5: // fstat
-			printf("%d, %p", (int)regs->rdi, (void*)regs->rsi);
-			break;
-		case 17: // pread64
-		{
-			printf("%d, %p, %llu, %lld", 
-				(int)regs->rdi, 
-				(void*)regs->rsi, 
-				regs->rdx, 
-				(long long)regs->r10);
-			break;
-		}
-		case 158: // arch_prctl
-			printf("%d, %p", (int)regs->rdi, (void*)regs->rsi);
-			break;
-		case 218: // set_tid_address
-			printf("%p", (void*)regs->rdi);
-			break;
-		case 273: // set_robust_list
-			printf("%p, %llu", (void*)regs->rdi, regs->rsi);
-			break;
-		case 334: // rseq
-			printf("%p, %llu, %d, %d", 
-				(void*)regs->rdi, 
-				regs->rsi, 
-				(int)regs->rdx, 
-				(int)regs->r10);
-			break;
-		case 10: // mprotect
-			printf("%p, %llu, %s", 
-				(void*)regs->rdi, 
-				regs->rsi, 
-				format_mmap_prot((int)regs->rdx));
-			break;
-		case 302: // prlimit64
-			printf("%d, %d, %p, %p", 
-				(int)regs->rdi, 
-				(int)regs->rsi, 
-				(void*)regs->rdx, 
-				(void*)regs->r10);
-			break;
-		case 11: // munmap
-			printf("%p, %llu", (void*)regs->rdi, regs->rsi);
-			break;
-		case 318: // getrandom
-		{
-			// For getrandom, we want to show binary data representation
-			// Use the return value (actual bytes read) instead of requested size
-			long actual_bytes = regs->rax;
-			if (actual_bytes > 0 && actual_bytes <= 64) { // Sanity check
-				char *data = read_binary_safe(pid, regs->rdi, actual_bytes);
-				if (data) {
-					// Show bytes in hex format like original strace
-					printf("\"");
-					for (long i = 0; i < actual_bytes; i++) {
-						printf("\\x%02x", (unsigned char)data[i]);
-					}
-					printf("\", %ld", actual_bytes); // Show actual bytes read
-					free(data);
+	printf("%s(", name);
+	for (int i = 0; i < 6; ++i) {
+		if (!desc || desc->param_types[i] == NONE) break;
+		if (i > 0) printf(", ");
+		switch (desc->param_types[i]) {
+			case STRING: {
+				char *str = read_string_via_proc(pid, args[i]);
+				if (str) {
+					printf("\"%s\"", str);
+					free(str);
 				} else {
-					printf("%p, %llu, %d", 
-						(void*)regs->rdi, 
-						regs->rsi, 
-						(int)regs->rdx);
+					printf("(null)");
 				}
-			} else {
-				printf("%p, %llu, %d", 
-					(void*)regs->rdi, 
-					regs->rsi, 
-					(int)regs->rdx);
+				break;
 			}
-			break;
+			case POINTER:
+				print_ptr_special(args[i]);
+				break;
+			case HEX:
+				printf("0x%llx", args[i]);
+				break;
+			case OPEN_FLAGS:
+				log_OPEN_FLAGS(args[i]);
+				break;
+			case OPEN_MODE:
+				log_OPEN_MODE(args[i]);
+				break;
+			case MMAP_FLAGS:
+				log_MMAP_FLAGS(args[i]);
+				break;
+			case MEM_PROT:
+				log_MEM_PROT(args[i]);
+				break;
+			case ACCESS_MODE:
+				log_ACCESS_MODE(args[i]);
+				break;
+			default:
+				printf("%lld", args[i]);
+				break;
 		}
-		default:
-			// Print first few parameters as pointers/ints
-			if (regs->rdi != 0) {
-				printf("%p", (void*)regs->rdi);
-			} else {
-				printf("0");
-			}
-			if (regs->rsi != 0) {
-				printf(", %p", (void*)regs->rsi);
-			}
-			if (regs->rdx != 0) {
-				printf(", %p", (void*)regs->rdx);
-			}
-			if (regs->r10 != 0) {
-				printf(", %p", (void*)regs->r10);
-			}
-			if (regs->r8 != 0) {
-				printf(", %p", (void*)regs->r8);
-			}
-			if (regs->r9 != 0) {
-				printf(", %p", (void*)regs->r9);
-			}
-			break;
 	}
-	
-	printf(")");
-	
-	// Print return value on exit
 	long ret = regs->rax;
-	if (ret < 0) {
-		// Error case
-		printf(" = -1 %s (%s)", 
-			ft_errnoname(-ret), 
-			strerror(-ret));
-	} else {
-		// Success case
-		if (ret == 0) {
-			printf(" = 0");
+	// Print return value for pointer-returning syscalls as hex or special
+	if (strcmp(name, "brk") == 0 || strcmp(name, "mmap") == 0 || strcmp(name, "mmap2") == 0) {
+		if (ret < 0) {
+			int err = -ret;
+			printf(") = -1 (%s)\n", strerror(err));
 		} else {
-			// Check if this syscall typically returns a pointer/address
-			if (syscall_no == 12 || // brk
-				syscall_no == 9 ||  // mmap
-				syscall_no == 11 || // munmap
-				syscall_no == 218 || // set_tid_address
-				syscall_no == 273 || // set_robust_list
-				syscall_no == 334 || // rseq
-				syscall_no == 158 || // arch_prctl
-				syscall_no == 302) { // prlimit64
-				printf(" = 0x%lx", ret);
-			} else {
-				printf(" = %ld", ret);
-			}
+			printf(") = ");
+			print_ptr_special((unsigned long long)ret);
+			printf("\n");
 		}
+	} else if (ret < 0) {
+		int err = -ret;
+		printf(") = -1 (%s)\n", strerror(err));
+	} else {
+		printf(") = %ld\n", ret);
 	}
-	printf("\n");
 }
 
 /**
@@ -457,7 +255,7 @@ static char *read_string_via_proc(pid_t pid, unsigned long addr)
 		close(fd);
 		return strdup("(error)");
 	}
-	
+
 	// Read string in chunks
 	char *str = malloc(4096);
 	if (!str) {

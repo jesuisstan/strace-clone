@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/shm.h>
 #include <sys/types.h>
 
@@ -19,5 +17,5 @@ static const flag_str_t shmat_flags[] = {
  */
 int log_SHMAT_FLAGS(uint64_t value)
 {
-	return flags_log(value, shmat_flags, ELEM_COUNT(shmat_flags));
+	return flags_log(value, shmat_flags, sizeof(shmat_flags) / sizeof(shmat_flags[0]));
 }

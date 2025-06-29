@@ -1,8 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/mman.h>
 
 static const flag_str_t msync_flags[] = {
@@ -19,5 +17,5 @@ static const flag_str_t msync_flags[] = {
  */
 int log_MSYNC_FLAGS(uint64_t value)
 {
-	return flags_log(value, msync_flags, ELEM_COUNT(msync_flags));
+	return flags_log(value, msync_flags, sizeof(msync_flags) / sizeof(msync_flags[0]));
 }

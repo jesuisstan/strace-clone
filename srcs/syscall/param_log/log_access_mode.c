@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <unistd.h>
 
 static const flag_str_t flags[] = {
@@ -18,6 +16,6 @@ static const flag_str_t flags[] = {
 int log_ACCESS_MODE(uint64_t value)
 {
 	if (value == 0)
-		return ft_dprintf(STDERR_FILENO, "F_OK");
-	return flags_log(value, flags, ELEM_COUNT(flags));
+		return printf("F_OK");
+	return flags_log(value, flags, sizeof(flags) / sizeof(flags[0]));
 }

@@ -1,5 +1,4 @@
 #include "../param_log.h"
-#include <ft_printf.h>
 
 /**
  * @brief Log a value from a list of options
@@ -16,9 +15,9 @@ int option_log(uint64_t value, const flag_str_t *options, size_t options_size,
 	for (size_t i = 0; i < options_size; i++)
 	{
 		if (options[i].flag == value)
-			return ft_dprintf(STDERR_FILENO, "%s", options[i].str);
+			return dprintf(STDERR_FILENO, "%s", options[i].str);
 	}
 	if (!default_name)
-		return ft_dprintf(STDERR_FILENO, "%#llx", value);
-	return ft_dprintf(STDERR_FILENO, "%#llx /* %s */", value, default_name);
+		return dprintf(STDERR_FILENO, "%#lx", value);
+	return dprintf(STDERR_FILENO, "%#lx /* %s */", value, default_name);
 }

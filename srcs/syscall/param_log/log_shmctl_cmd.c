@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/shm.h>
 
 static const flag_str_t shmctl_cmd[] = {
@@ -16,5 +14,5 @@ static const flag_str_t shmctl_cmd[] = {
  */
 int log_SHMCTL_CMD(uint64_t value)
 {
-	return option_log(value, shmctl_cmd, ELEM_COUNT(shmctl_cmd), "IPC_???");
+	return option_log(value, shmctl_cmd, sizeof(shmctl_cmd) / sizeof(shmctl_cmd[0]), "IPC_???");
 }

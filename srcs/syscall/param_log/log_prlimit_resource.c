@@ -1,5 +1,4 @@
 #include "param_log.h"
-#include <macros.h>
 #include <sys/resource.h>
 
 static const flag_str_t resources[] = {
@@ -13,5 +12,5 @@ static const flag_str_t resources[] = {
 
 int log_PRLIMIT_RESOURCE(uint64_t value)
 {
-	return option_log(value, resources, ELEM_COUNT(resources), "RLIMIT_???");
+	return option_log(value, resources, sizeof(resources) / sizeof(resources[0]), "RLIMIT_???");
 }

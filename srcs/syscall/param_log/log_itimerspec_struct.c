@@ -1,5 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
 
 struct kernel_timespec
 {
@@ -16,9 +15,9 @@ struct kernel_itimerspec
 int log_KERNEL_ITIMERSPEC_STRUCT(uint64_t value, syscall_log_param_t *context)
 {
 	STRUCT_HANDLE(struct kernel_itimerspec, itimerspec);
-	return ft_dprintf(
+	return dprintf(
 		STDERR_FILENO,
-		"{it_interval={tv_sec=%lld, tv_nsec=%lld}, it_value={tv_sec=%lld, tv_nsec=%lld}}",
+		"{it_interval={tv_sec=%ld, tv_nsec=%ld}, it_value={tv_sec=%ld, tv_nsec=%ld}}",
 		itimerspec.it_interval.tv_sec, itimerspec.it_interval.tv_nsec, itimerspec.it_value.tv_sec,
 		itimerspec.it_value.tv_nsec);
 }

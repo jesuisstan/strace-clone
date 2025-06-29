@@ -1,13 +1,14 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
 #include <ft_strace_utils.h>
-#include <macros.h>
 #include <netinet/in.h>
-#include <registers.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <stdint.h>
+
+static int64_t REGISTERS_GET_RETURN(void *regs __attribute__((unused)), int type __attribute__((unused))) { return 0; }
+static int64_t registers_get_param(void *regs __attribute__((unused)), int type __attribute__((unused)), int index __attribute__((unused))) { return 0; }
 
 static int log_remote_iovec_struct(void *iov_remote, uint64_t vlen, pid_t pid, int64_t total_len)
 {
@@ -47,13 +48,13 @@ static int log_remote_iovec_struct(void *iov_remote, uint64_t vlen, pid_t pid, i
 int log_MSGHDR_STRUCT(uint64_t value, syscall_log_param_t *context)
 {
 	if (value == 0)
-		return ft_dprintf(STDERR_FILENO, "NULL");
+		return dprintf(STDERR_FILENO, "NULL");
 	int total_len = NO_SIZE;
 	if (context->after_syscall)
 	{
 		int64_t ret = REGISTERS_GET_RETURN(context->regs, context->type);
 		if (ret < 0)
-			return ft_dprintf(STDERR_FILENO, "%p", (void *)value);
+			return dprintf(STDERR_FILENO, "%p", (void *)value);
 		total_len = ret;
 	}
 	else
@@ -61,15 +62,15 @@ int log_MSGHDR_STRUCT(uint64_t value, syscall_log_param_t *context)
 			(int64_t)registers_get_param(context->regs, context->type, context->arg_index + 1);
 	struct msghdr msghdr;
 	if (remote_memcpy(&msghdr, context->pid, (void *)value, sizeof(struct msghdr)) < 0)
-		return ft_dprintf(STDERR_FILENO, "%p", (void *)value);
+		return dprintf(STDERR_FILENO, "%p", (void *)value);
 	int size_written = 0;
-	size_written += ft_dprintf(STDERR_FILENO, "{msg_name=");
+	size_written += dprintf(STDERR_FILENO, "{msg_name=");
 	size_written += log_SOCKADDR_STRUCT((uint64_t)msghdr.msg_name, context);
-	size_written += ft_dprintf(STDERR_FILENO, ", msg_namelen=%u, msg_iov=", msghdr.msg_namelen);
+	size_written += dprintf(STDERR_FILENO, ", msg_namelen=%u, msg_iov=", (unsigned)msghdr.msg_namelen);
 	size_written +=
 		log_remote_iovec_struct(msghdr.msg_iov, msghdr.msg_iovlen, context->pid, total_len);
-	size_written += ft_dprintf(
-		STDERR_FILENO, ", msg_iovlen=%u, msg_control=%p, msg_controllen=%u, msg_flags=%u}",
-		msghdr.msg_iovlen, msghdr.msg_control, msghdr.msg_controllen, msghdr.msg_flags);
+	size_written += dprintf(
+		STDERR_FILENO, ", msg_iovlen=%lu, msg_control=%p, msg_controllen=%lu, msg_flags=%d}",
+		(unsigned long)msghdr.msg_iovlen, msghdr.msg_control, (unsigned long)msghdr.msg_controllen, msghdr.msg_flags);
 	return size_written;
 }

@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <signal.h>
 #include <time.h>
 
@@ -29,5 +27,5 @@ static const flag_str_t clockid_values[] = {
 
 int log_CLOCKID_T(uint64_t value)
 {
-	return option_log(value, clockid_values, ELEM_COUNT(clockid_values), "CLOCK_???");
+	return option_log(value, clockid_values, sizeof(clockid_values) / sizeof(clockid_values[0]), "CLOCK_???");
 }

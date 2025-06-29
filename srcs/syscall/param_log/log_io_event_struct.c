@@ -1,5 +1,8 @@
 #include "param_log.h"
-#include <ft_printf.h>
+#include <stdbool.h>
+
+// Stub function for missing register access
+static int64_t REGISTERS_GET_RETURN(void *regs __attribute__((unused)), int type __attribute__((unused))) { return 0; }
 
 struct io_event
 {
@@ -24,21 +27,21 @@ int log_IO_EVENT_STRUCT(uint64_t value, syscall_log_param_t *context)
 	}
 	if (remote_memcpy(events, context->pid, remote_ptr, sizeof(struct io_event) * event_count) < 0)
 	{
-		size_written += ft_dprintf(STDERR_FILENO, "%p", remote_ptr);
+		size_written += dprintf(STDERR_FILENO, "%p", remote_ptr);
 		free(events);
 		return size_written;
 	}
-	size_written += ft_dprintf(STDERR_FILENO, "[");
-	bool_t first = true;
+	size_written += dprintf(STDERR_FILENO, "[");
+	bool first = true;
 	for (long i = 0; i < event_count; i++)
 	{
 		if (!first)
-			size_written += ft_dprintf(STDERR_FILENO, ", ");
+			size_written += dprintf(STDERR_FILENO, ", ");
 		first = false;
-		size_written += ft_dprintf(STDERR_FILENO, "{.data=%lu, .obj=%lu, .res=%ld, .res2=%ld}",
+		size_written += dprintf(STDERR_FILENO, "{.data=%lu, .obj=%lu, .res=%ld, .res2=%ld}",
 								   events[i].data, events[i].obj, events[i].res, events[i].res2);
 	}
-	size_written += ft_dprintf(STDERR_FILENO, "]");
+	size_written += dprintf(STDERR_FILENO, "]");
 	free(events);
 	return size_written;
 }

@@ -1,13 +1,10 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
 #include <ft_strace_utils.h>
-#include <ft_string.h>
-#include <macros.h>
-#include <registers.h>
 #include <signal.h>
 #include <sys/uio.h>
+#include <stdbool.h>
 
 /**
  * @brief Skip the SIG prefix
@@ -33,19 +30,19 @@ const char *skip_sigprefix(const char *str)
  */
 int log_local_sigset_struct(sigset_t *sigset)
 {
-	int size_written = ft_dprintf(STDERR_FILENO, "[");
-	bool_t first = true;
+	int size_written = dprintf(STDERR_FILENO, "[");
+	bool first = true;
 	for (unsigned i = 2; i < NB_SIG; i++)
 	{
 		if (sigismember(sigset, i))
 		{
 			if (!first)
-				size_written += ft_dprintf(STDERR_FILENO, " ");
+				size_written += dprintf(STDERR_FILENO, " ");
 			first = false;
-			size_written += ft_dprintf(STDERR_FILENO, "%s", skip_sigprefix(ft_signalname(i)));
+			size_written += dprintf(STDERR_FILENO, "%s", skip_sigprefix(ft_signalname(i)));
 		}
 	}
-	size_written += ft_dprintf(STDERR_FILENO, "]");
+	size_written += dprintf(STDERR_FILENO, "]");
 	return size_written;
 }
 

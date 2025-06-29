@@ -1,5 +1,4 @@
 #include "param_log.h"
-#include <macros.h>
 #include <sys/mman.h>
 
 static const flag_str_t mlockall_flags[] = {
@@ -9,5 +8,5 @@ static const flag_str_t mlockall_flags[] = {
 
 int log_MLOCKALL_FLAGS(uint64_t value)
 {
-	return flags_log(value, mlockall_flags, ELEM_COUNT(mlockall_flags));
+	return flags_log(value, mlockall_flags, sizeof(mlockall_flags) / sizeof(mlockall_flags[0]));
 }

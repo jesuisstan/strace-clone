@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <ft_printf.h>
 #include <sys/sysinfo.h>
 
 /**
@@ -14,7 +13,7 @@
 int log_SYSINFO_STRUCT(uint64_t value, syscall_log_param_t *context)
 {
 	STRUCT_HANDLE(struct sysinfo, sysinfo);
-	return ft_dprintf(STDERR_FILENO,
+	return dprintf(STDERR_FILENO,
 					  "{uptime=%ld, loads=[%lu, %lu, %lu], totalram=%lu, freeram=%lu, "
 					  "sharedram=%lu, bufferram=%lu, totalswap=%lu, freeswap=%lu, procs=%hu, "
 					  "totalhigh=%lu, freehigh=%lu, mem_unit=%hu}",

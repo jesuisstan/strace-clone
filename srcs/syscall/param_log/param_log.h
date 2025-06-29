@@ -1,8 +1,7 @@
 #pragma once
 
-#include <bool_t.h>
+#include <stdbool.h>
 #include <ft_strace_utils.h>
-#include <registers.h>
 #include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
@@ -12,10 +11,10 @@ typedef struct
 {
 	pid_t pid;
 	uint8_t arg_index;
-	user_regs_t *regs;
-	register_type_t type;
-	bool_t after_syscall;
-	bool_t is_return_log;
+	void *regs;
+	int type;
+	bool after_syscall;
+	bool is_return_log;
 } syscall_log_param_t;
 
 typedef struct
@@ -82,7 +81,7 @@ void *handle_ptr(uint64_t value, syscall_log_param_t *context, int *size_written
 	struct_type struct_name;                                                                       \
 	if (remote_memcpy(&struct_name, context->pid, remote_ptr, sizeof(struct_type)) < 0)            \
 	{                                                                                              \
-		_size_written += ft_dprintf(STDERR_FILENO, "%p", remote_ptr);                              \
+		_size_written += dprintf(STDERR_FILENO, "%p", remote_ptr);                              \
 		return _size_written;                                                                      \
 	}
 
@@ -278,7 +277,7 @@ int log_SIGPROCMASK_HOW(uint64_t value);
  * @return int the number of bytes written
  */
 int log_iovec_struct_local(int pid, struct iovec *iov, uint64_t vlen, int64_t total_len,
-						   bool_t is_fail);
+						   bool is_fail);
 
 /**
  * @brief Log iovec struct

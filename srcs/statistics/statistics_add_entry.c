@@ -1,5 +1,6 @@
-#include <statistics.h>
+#include "statistics.h"
 #include <stdlib.h>
+#include <string.h>
 
 /**
  * @brief Add an entry to the statistics.
@@ -10,36 +11,39 @@
  * @param time the time taken for the syscall
  * @return 0 on success, -1 on failure
  */
-int statistics_add_entry(statistics_t *statistics, architecture_t type,
+int statistics_add_entry(t_statistics *statistics, architecture_t type,
                         unsigned long long syscall_no, unsigned long long time)
 {
-	(void)type; // Currently not used, but kept for future extensibility
-	
-	if (!statistics)
+	(void)type;
+	if (!statistics || !statistics->entries) {
 		return -1;
+	}
 	
-	// Find existing entry
+	// Find existing entry for this syscall
 	for (size_t i = 0; i < statistics->count; i++) {
 		if (statistics->entries[i].syscall_no == syscall_no) {
-			statistics->entries[i].count++;
+			statistics->entries[i].call_count++;
 			statistics->entries[i].total_time += time;
 			return 0;
-		}
+	}
 	}
 	
 	// Add new entry
 	if (statistics->count >= statistics->capacity) {
-		statistics->capacity *= 2;
-		statistics_entry_t *new_entries = realloc(statistics->entries, 
-												 statistics->capacity * sizeof(statistics_entry_t));
-		if (!new_entries)
+		size_t new_capacity = statistics->capacity * 2;
+		t_statistics_entry *new_entries = realloc(statistics->entries, 
+												 new_capacity * sizeof(t_statistics_entry));
+		if (!new_entries) {
 			return -1;
+		}
 		statistics->entries = new_entries;
+		statistics->capacity = new_capacity;
 	}
 	
 	statistics->entries[statistics->count].syscall_no = syscall_no;
-	statistics->entries[statistics->count].count = 1;
+	statistics->entries[statistics->count].call_count = 1;
 	statistics->entries[statistics->count].total_time = time;
+	statistics->entries[statistics->count].error_count = 0;
 	statistics->count++;
 	
 	return 0;

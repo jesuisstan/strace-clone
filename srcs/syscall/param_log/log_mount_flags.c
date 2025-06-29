@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <macros.h>
 #include <sys/mount.h>
 
 static const flag_str_t mount_flags[] = {
@@ -19,5 +18,5 @@ static const flag_str_t mount_flags[] = {
 
 int log_MOUNT_FLAGS(uint64_t value)
 {
-	return flags_log(value, mount_flags, ELEM_COUNT(mount_flags));
+	return flags_log(value, mount_flags, sizeof(mount_flags) / sizeof(mount_flags[0]));
 }

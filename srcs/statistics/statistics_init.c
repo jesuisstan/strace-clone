@@ -1,4 +1,4 @@
-#include <statistics.h>
+#include "statistics.h"
 #include <stdlib.h>
 
 /**
@@ -6,20 +6,19 @@
  *
  * @return statistics_t* the initialized statistics or NULL if failed
  */
-statistics_t *statistics_init(void)
+t_statistics *statistics_init(void)
 {
-	statistics_t *statistics = malloc(sizeof(statistics_t));
+	t_statistics *statistics = malloc(sizeof(t_statistics));
 	if (!statistics)
 		return NULL;
 	
-	statistics->entries = malloc(100 * sizeof(statistics_entry_t));
+	statistics->capacity = 100;
+	statistics->count = 0;
+	statistics->entries = malloc(statistics->capacity * sizeof(t_statistics_entry));
 	if (!statistics->entries) {
 		free(statistics);
 		return NULL;
 	}
-	
-	statistics->count = 0;
-	statistics->capacity = 100;
 	
 	return statistics;
 }

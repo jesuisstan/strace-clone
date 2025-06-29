@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -21,5 +19,5 @@ static const flag_str_t af_options[] = {
  */
 int log_ADDRESS_FAMILY(uint64_t value)
 {
-	return option_log(value, af_options, ELEM_COUNT(af_options), "AF_???");
+	return option_log(value, af_options, sizeof(af_options) / sizeof(af_options[0]), "AF_???");
 }

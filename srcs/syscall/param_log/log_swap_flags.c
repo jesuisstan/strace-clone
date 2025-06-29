@@ -1,14 +1,12 @@
 #define _GNU_SOURCE
 
 #include "param_log.h"
-#include <macros.h>
-#include <sys/swap.h>
 
 static const flag_str_t swap_flags[] = {
-	FLAG_STR(SWAP_FLAG_PREFER),
-	FLAG_STR(SWAP_FLAG_PRIO_MASK),
-	FLAG_STR(SWAP_FLAG_PRIO_SHIFT),
-	FLAG_STR(SWAP_FLAG_DISCARD),
+	/* FLAG_STR(SWAP_FLAG_PREFER), */
+	/* FLAG_STR(SWAP_FLAG_PRIO_MASK), */																																																																													
+	/* FLAG_STR(SWAP_FLAG_PRIO_SHIFT), */
+	/* FLAG_STR(SWAP_FLAG_DISCARD), */
 };
 
 /**
@@ -18,5 +16,5 @@ static const flag_str_t swap_flags[] = {
  */
 int log_SWAP_FLAGS(uint64_t value)
 {
-	return flags_log(value, swap_flags, ELEM_COUNT(swap_flags));
+	return flags_log(value, swap_flags, sizeof(swap_flags) / sizeof(swap_flags[0]));
 }

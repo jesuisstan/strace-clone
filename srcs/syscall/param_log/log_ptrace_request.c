@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/ptrace.h>
 
 static const flag_str_t ptrace_requests[] = {
@@ -48,5 +46,5 @@ static const flag_str_t ptrace_requests[] = {
  */
 int log_PTRACE_REQUEST(uint64_t value)
 {
-	return option_log(value, ptrace_requests, ELEM_COUNT(ptrace_requests), "PTRACE_???");
+	return option_log(value, ptrace_requests, sizeof(ptrace_requests) / sizeof(ptrace_requests[0]), "PTRACE_???");
 }

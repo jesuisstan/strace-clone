@@ -1,5 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
 
 /**
  * @brief Log an unsigned integer
@@ -9,5 +8,5 @@
  */
 int log_INT(uint64_t value)
 {
-	return ft_dprintf(STDERR_FILENO, "%llu", value);
+	return dprintf(STDERR_FILENO, "%lu", value);
 }

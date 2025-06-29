@@ -2,8 +2,6 @@
 
 #include "param_log.h"
 #include <fcntl.h>
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -23,9 +21,9 @@ static const flag_str_t flags[] = {
 int log_OPEN_FLAGS(uint64_t value)
 {
 	int size_written = 0;
-	size_written += ft_dprintf(STDERR_FILENO, "O_RDONLY");
+	size_written += printf("O_RDONLY");
 	if (value)
-		size_written += ft_dprintf(STDERR_FILENO, "|");
-	size_written += flags_log(value, flags, ELEM_COUNT(flags));
+		size_written += printf("|");
+	size_written += flags_log(value, flags, sizeof(flags) / sizeof(flags[0]));
 	return size_written;
 }

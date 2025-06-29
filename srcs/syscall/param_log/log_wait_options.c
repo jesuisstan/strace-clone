@@ -1,6 +1,4 @@
 #include "param_log.h"
-#include <ft_printf.h>
-#include <macros.h>
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -19,5 +17,5 @@ static const flag_str_t wait_flags[] = {
  */
 int log_WAIT_OPTIONS(uint64_t value)
 {
-	return flags_log(value, wait_flags, ELEM_COUNT(wait_flags));
+	return flags_log(value, wait_flags, sizeof(wait_flags) / sizeof(wait_flags[0]));
 }
