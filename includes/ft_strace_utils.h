@@ -12,9 +12,6 @@
 // Global variable to track statistics mode
 extern bool g_statistics_mode;
 
-// Replace ft_string functions with standard ones
-#define ft_memcmp memcmp
-
 // Custom functions that need implementation
 const char *ft_signalname(int sig);
 const char *ft_errnoname(int errnum);

@@ -14,7 +14,7 @@
  */
 const char *skip_sigprefix(const char *str)
 {
-	if (ft_memcmp(str, "SIG", 3) == 0)
+	if (memcmp(str, "SIG", 3) == 0)
 		return str + 3;
 	return str;
 }
