@@ -45,7 +45,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 	unsigned long long syscall_start_time = 0;
 	extern bool execve_success;
 	extern failed_execve_t last_failed_execve;
-	extern void print_execve(pid_t pid, const char *filename, unsigned long argv_ptr, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
+	extern void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
 	
 	// Wait for the child to stop (already done in exec_program)
 	// Устанавливаем опции для ptrace, чтобы получать SIGTRAP|0x80 на syscalls
@@ -69,7 +69,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 		if (WIFEXITED(status)) {
 			// Если не было успешного execve, вывести последний неудачный
 			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
-				print_execve(pid, last_failed_execve.filename, last_failed_execve.argv_ptr, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
+				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
 				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
 				last_failed_execve.valid = false;
 			}
@@ -81,7 +81,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 		if (WIFSIGNALED(status)) {
 			// Если не было успешного execve, вывести последний неудачный
 			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
-				print_execve(pid, last_failed_execve.filename, last_failed_execve.argv_ptr, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
+				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
 				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
 				last_failed_execve.valid = false;
 			}

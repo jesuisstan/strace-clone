@@ -31,17 +31,14 @@ static unsigned long execve_argv_in = 0;
 static unsigned long execve_envp_in = 0;
 static int execve_argc_in = 0;
 static int execve_envc_in = 0;
+static char **execve_argv_saved = NULL;  // Save actual argument strings
 
-void print_execve(pid_t pid, const char *filename, unsigned long argv_ptr, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err) {
+void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err) {
 	printf("execve(\"%s\", [", filename);
 	for (int i = 0; i < arg_count; ++i) {
-		unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, argv_ptr + i * sizeof(unsigned long), NULL);
-		if (ptr == 0) break;
 		if (i > 0) printf(", ");
-		char *arg_str = read_string_via_proc(pid, ptr);
-		if (arg_str) {
-			printf("\"%s\"", arg_str);
-			free(arg_str);
+		if (execve_argv_saved && execve_argv_saved[i]) {
+			printf("\"%s\"", execve_argv_saved[i]);
 		} else {
 			printf("(null)");
 		}
@@ -84,10 +81,19 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	// On entry to execve, save parameters for later use (since memory will be replaced after execve)
 	if (syscall_no == 59 && !is_exit) {
 		if (execve_filename_in) { free(execve_filename_in); execve_filename_in = NULL; }
+		if (execve_argv_saved) {
+			for (int i = 0; i < execve_argc_in; i++) {
+				if (execve_argv_saved[i]) free(execve_argv_saved[i]);
+			}
+			free(execve_argv_saved);
+			execve_argv_saved = NULL;
+		}
+		
 		execve_filename_in = read_string_via_proc(pid, regs->rdi);
 		execve_argv_in = regs->rsi;
 		execve_envp_in = regs->rdx;
-		// Count arguments
+		
+		// Count arguments and save them
 		execve_argc_in = 0;
 		if (execve_argv_in) {
 			while (1) {
@@ -96,6 +102,18 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 				execve_argc_in++;
 			}
 		}
+		
+		// Save actual argument strings
+		if (execve_argc_in > 0) {
+			execve_argv_saved = malloc(execve_argc_in * sizeof(char*));
+			if (execve_argv_saved) {
+				for (int i = 0; i < execve_argc_in; i++) {
+					unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, execve_argv_in + i * sizeof(unsigned long), NULL);
+					execve_argv_saved[i] = read_string_via_proc(pid, ptr);
+				}
+			}
+		}
+		
 		execve_envc_in = 0;
 		if (execve_envp_in) {
 			while (1) {
@@ -104,6 +122,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 				execve_envc_in++;
 			}
 		}
+		
 		return;
 	}
 
@@ -151,7 +170,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		int err = -ret;
 		if (ret == 0 && !execve_success) {
 			// First successful execve
-			print_execve(pid, execve_filename_in ? execve_filename_in : "(error)", execve_argv_in, execve_envp_in, execve_argc_in, execve_envc_in, ret, err);
+			print_execve(execve_filename_in ? execve_filename_in : "(error)", execve_envp_in, execve_argc_in, execve_envc_in, ret, err);
 			execve_success = true;
 			if (last_failed_execve.filename) { free(last_failed_execve.filename); last_failed_execve.filename = NULL; }
 		} else if (ret < 0) {

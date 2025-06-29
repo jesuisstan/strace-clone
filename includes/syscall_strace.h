@@ -22,7 +22,7 @@ typedef struct s_failed_execve {
 	bool valid;
 } failed_execve_t;
 extern failed_execve_t last_failed_execve;
-void print_execve(pid_t pid, const char *filename, unsigned long argv_ptr, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
+void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
 
 typedef enum {
 	NONE = 0,
