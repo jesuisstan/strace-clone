@@ -14,6 +14,7 @@ OBJS = $(SRCS:$(SRCSDIR)/%.c=$(OBJSDIR)/%.o)
 # Main target
 ft_strace: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@
+	@echo "✅ strace-clone successfully compiled!"
 
 # Pattern rule for object files
 $(OBJSDIR)/%.o: $(SRCSDIR)/%.c
