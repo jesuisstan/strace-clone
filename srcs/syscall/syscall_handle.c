@@ -34,33 +34,33 @@ static int execve_envc_in = 0;
 static char **execve_argv_saved = NULL;  // Save actual argument strings
 
 void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err) {
-	printf("execve(\"%s\", [", filename);
+	dprintf(STDERR_FILENO, "execve(\"%s\", [", filename);
 	for (int i = 0; i < arg_count; ++i) {
-		if (i > 0) printf(", ");
+		if (i > 0) dprintf(STDERR_FILENO, ", ");
 		if (execve_argv_saved && execve_argv_saved[i]) {
-			printf("\"%s\"", execve_argv_saved[i]);
+			dprintf(STDERR_FILENO, "\"%s\"", execve_argv_saved[i]);
 		} else {
-			printf("(null)");
+			dprintf(STDERR_FILENO, "(null)");
 		}
 	}
-	printf("] , %p /* %d vars */) = ", (void*)envp_ptr, env_count);
+	dprintf(STDERR_FILENO, "] , %p /* %d vars */) = ", (void*)envp_ptr, env_count);
 	if (ret < 0) {
-		printf("-1 (%s)\n", strerror(err));
+		dprintf(STDERR_FILENO, "-1 (%s)\n", strerror(err));
 	} else {
-		printf("%ld\n", ret);
+		dprintf(STDERR_FILENO, "%ld\n", ret);
 	}
 }
 
 // Helper to print pointer/special values in strace style
 static void print_ptr_special(unsigned long long value) {
 	if (value == 0) {
-		printf("NULL");
+		dprintf(STDERR_FILENO, "NULL");
 	} else if (value == (unsigned long long)-1 || value == 0xFFFFFFFFFFFFFFFFull || value == 0xFFFFFFFFul) {
-		printf("-1");
+		dprintf(STDERR_FILENO, "-1");
 	} else if (value == 0xFFFFFFFFFFFFFF9Cull || value == 0xFFFFFF9Cul) {
-		printf("AT_FDCWD");
+		dprintf(STDERR_FILENO, "AT_FDCWD");
 	} else {
-		printf("0x%llx", value);
+		dprintf(STDERR_FILENO, "0x%llx", value);
 	}
 }
 
@@ -188,44 +188,75 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		return;
 	}
 	
-	printf("%s(", name);
+	dprintf(STDERR_FILENO, "%s(", name);
 	for (int i = 0; i < 6; ++i) {
 		if (!desc || desc->param_types[i] == NONE) break;
-		if (i > 0) printf(", ");
+		if (i > 0) dprintf(STDERR_FILENO, ", ");
+		syscall_log_param_t context = { .pid = pid, .regs = regs, .arg_index = i };
 		switch (desc->param_types[i]) {
 			case STRING: {
 				char *str = read_string_via_proc(pid, args[i]);
 				if (str) {
-					printf("\"%s\"", str);
+					dprintf(STDERR_FILENO, "\"%s\"", str);
 					free(str);
 				} else {
-					printf("(null)");
+					dprintf(STDERR_FILENO, "NULL");
 				}
 				break;
 			}
-			case POINTER:
-				print_ptr_special(args[i]);
-				break;
-			case HEX:
-				printf("0x%llx", args[i]);
-				break;
-			case OPEN_FLAGS:
-				log_OPEN_FLAGS(args[i]);
-				break;
-			case OPEN_MODE:
-				log_OPEN_MODE(args[i]);
-				break;
-			case MMAP_FLAGS:
-				log_MMAP_FLAGS(args[i]);
-				break;
-			case MEM_PROT:
-				log_MEM_PROT(args[i]);
-				break;
-			case ACCESS_MODE:
-				log_ACCESS_MODE(args[i]);
-				break;
+			case POINTER: log_PTR(args[i]); break;
+			case HEX: log_HEX(args[i]); break;
+			case OPEN_FLAGS: log_OPEN_FLAGS(args[i]); break;
+			case OPEN_MODE: log_OPEN_MODE(args[i]); break;
+			case MMAP_FLAGS: log_MMAP_FLAGS(args[i]); break;
+			case MEM_PROT: log_MEM_PROT(args[i]); break;
+			case ACCESS_MODE: log_ACCESS_MODE(args[i]); break;
+			case SIGNED_INT: log_SIGNED_INT(args[i]); break;
+			case MEMSEG: log_MEMSEG(args[i], &context); break;
+			case STAT_STRUCT: log_STAT_STRUCT(args[i], &context); break;
+			case POLL_FDS: log_POLL_FDS(args[i], &context); break;
+			case POLL_FDS_AFTER: log_POLL_FDS_AFTER(args[i], &context); break;
+			case SEEK_WHENCE: log_SEEK_WHENCE(args[i]); break;
+			case SIGNAL_NAME: log_SIGNAL_NAME(args[i]); break;
+			case SIGACTION_STRUCT: log_SIGACTION_STRUCT(args[i], &context); break;
+			case SIGSET_STRUCT: log_SIGSET_STRUCT(args[i], &context); break;
+			case SIGPROCMASK_HOW: log_SIGPROCMASK_HOW(args[i]); break;
+			case IOVEC_STRUCT: log_IOVEC_STRUCT(args[i], &context); break;
+			case PIPEFDS: log_PIPEFDS(args[i], &context); break;
+			case FD_SET_STRUCT: log_FD_SET_STRUCT(args[i], &context); break;
+			case TIMEVAL_STRUCT: log_TIMEVAL_STRUCT(args[i], &context); break;
+			case SELECT_RETURN: log_SELECT_RETURN(args[i], &context); break;
+			case MREMAP_FLAGS: log_MREMAP_FLAGS(args[i]); break;
+			case MSYNC_FLAGS: log_MSYNC_FLAGS(args[i]); break;
+			case MADVISE_ADVISE: log_MADVISE_ADVISE(args[i]); break;
+			case SHMAT_FLAGS: log_SHMAT_FLAGS(args[i]); break;
+			case SHMID_DS_STRUCT: log_SHMID_DS_STRUCT(args[i], &context); break;
+			case SHMCTL_CMD: log_SHMCTL_CMD(args[i]); break;
+			case KERNEL_TIMESPEC_STRUCT: log_KERNEL_TIMESPEC_STRUCT(args[i], &context); break;
+			case ITIMERVAL_STRUCT: log_ITIMERVAL_STRUCT(args[i], &context); break;
+			case ITIMER_WHICH: log_ITIMER_WHICH(args[i]); break;
+			case ADDRESS_FAMILY: log_ADDRESS_FAMILY(args[i]); break;
+			case SOCKET_TYPE: log_SOCKET_TYPE(args[i]); break;
+			case IPPROTO: log_IPPROTO(args[i]); break;
+			case SOCKADDR_STRUCT: log_SOCKADDR_STRUCT(args[i], &context); break;
+			case SEND_FLAGS: log_SEND_FLAGS(args[i]); break;
+			case MSGHDR_STRUCT: log_MSGHDR_STRUCT(args[i], &context); break;
+			case INT_PTR: log_INT_PTR(args[i], &context); break;
+			case SHUTDOWN_HOW: log_SHUTDOWN_HOW(args[i]); break;
+			case ARGV: log_ARGV(args[i], &context); break;
+			case ENVP: log_ENVP(args[i], &context); break;
+			case WAIT_OPTIONS: log_WAIT_OPTIONS(args[i]); break;
+			case WAIT_STATUS: log_WAIT_STATUS(args[i], &context); break;
+			case RUSAGE_STRUCT: log_RUSAGE_STRUCT(args[i], &context); break;
+			case UTSNAME_STRUCT: log_UTSNAME_STRUCT(args[i], &context); break;
+			case IPCS_FLAGS: log_IPCS_FLAGS(args[i]); break;
+			case SEMBUF_STRUCT: log_SEMBUF_STRUCT(args[i], &context); break;
+			case SEMCTL_CMD: log_SEMCTL_CMD(args[i]); break;
+			case MSGBUF_STRUCT: log_MSGBUF_STRUCT(args[i], &context); break;
+			case MSGFLG: log_MSGFLG(args[i]); break;
+			case MSGCTL_CMD: log_MSGCTL_CMD(args[i]); break;
 			default:
-				printf("%lld", args[i]);
+				log_PTR(args[i]);
 				break;
 		}
 	}
@@ -234,17 +265,17 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	if (strcmp(name, "brk") == 0 || strcmp(name, "mmap") == 0 || strcmp(name, "mmap2") == 0) {
 		if (ret < 0) {
 			int err = -ret;
-			printf(") = -1 (%s)\n", strerror(err));
+			dprintf(STDERR_FILENO, ") = -1 (%s)\n", strerror(err));
 		} else {
-			printf(") = ");
+			dprintf(STDERR_FILENO, ") = ");
 			print_ptr_special((unsigned long long)ret);
-			printf("\n");
+			dprintf(STDERR_FILENO, "\n");
 		}
 	} else if (ret < 0) {
 		int err = -ret;
-		printf(") = -1 (%s)\n", strerror(err));
+		dprintf(STDERR_FILENO, ") = -1 (%s)\n", strerror(err));
 	} else {
-		printf(") = %ld\n", ret);
+		dprintf(STDERR_FILENO, ") = %ld\n", ret);
 	}
 }
 

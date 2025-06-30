@@ -144,6 +144,30 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 				// Toggle entry/exit flag
 				is_syscall_entry = !is_syscall_entry;
 			}
+			else
+			{
+
+				int signal = WSTOPSIG(status);
+				int signal_to_deliver = 0;
+
+				if (signal != SIGTRAP) {
+					siginfo_t siginfo;
+					if (ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo) == -1) {
+						perror("ptrace PTRACE_GETSIGINFO");
+					} else {
+						const char *signame = ft_signalname(siginfo.si_signo);
+						fprintf(stderr, "--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n",
+								signame, signame, siginfo.si_code, siginfo.si_pid, siginfo.si_uid);
+						fflush(stderr);
+					}
+					signal_to_deliver = signal;
+				}
+				if (ptrace(PTRACE_SYSCALL, pid, NULL, signal_to_deliver) == -1) {
+					perror("ptrace SYSCALL with signal");
+					return -1;
+				}
+				continue;
+			}
 		}
 		// Continue the child
 		if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) == -1) {
