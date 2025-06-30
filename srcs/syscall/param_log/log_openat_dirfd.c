@@ -3,7 +3,7 @@
 
 int log_OPENAT_DIRFD(int value)
 {
-	if (value == AT_FDCWD)
+	if ((int)value == AT_FDCWD)
 		return dprintf(STDERR_FILENO, "AT_FDCWD");
-	return dprintf(STDERR_FILENO, "%d", value);
+	return dprintf(STDERR_FILENO, "%d", (int)value);
 }
