@@ -16,6 +16,6 @@ static const flag_str_t flags[] = {
 int log_ACCESS_MODE(uint64_t value)
 {
 	if (value == 0)
-		return printf("F_OK");
+		return dprintf(STDERR_FILENO, "F_OK");
 	return flags_log(value, flags, sizeof(flags) / sizeof(flags[0]));
 }

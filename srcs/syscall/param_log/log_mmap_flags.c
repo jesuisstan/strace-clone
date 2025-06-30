@@ -18,6 +18,6 @@ static const flag_str_t mmap_flags[] = {
 int log_MMAP_FLAGS(uint64_t value)
 {
 	if (value == 0)
-		return printf("MAP_FILE");
+		return dprintf(STDERR_FILENO, "MAP_FILE");
 	return flags_log(value, mmap_flags, sizeof(mmap_flags) / sizeof(mmap_flags[0]));
 }

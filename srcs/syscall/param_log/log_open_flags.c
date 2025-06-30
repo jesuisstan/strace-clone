@@ -24,26 +24,26 @@ int log_OPEN_FLAGS(uint64_t value)
 	int first = 1;
 	// Обработка режима доступа
 	if ((value & O_ACCMODE) == O_RDONLY) {
-		size_written += printf("O_RDONLY");
+		size_written += dprintf(STDERR_FILENO, "O_RDONLY");
 		first = 0;
 	} else if ((value & O_ACCMODE) == O_WRONLY) {
-		size_written += printf("O_WRONLY");
+		size_written += dprintf(STDERR_FILENO, "O_WRONLY");
 		first = 0;
 	} else if ((value & O_ACCMODE) == O_RDWR) {
-		size_written += printf("O_RDWR");
+		size_written += dprintf(STDERR_FILENO, "O_RDWR");
 		first = 0;
 	}
 	for (size_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		if (flags[i].flag == O_RDONLY || flags[i].flag == O_WRONLY || flags[i].flag == O_RDWR)
 			continue;
 		if (value & flags[i].flag) {
-			if (!first) size_written += printf("|");
-			size_written += printf("%s", flags[i].str);
+			if (!first) size_written += dprintf(STDERR_FILENO, "|");
+			size_written += dprintf(STDERR_FILENO, "%s", flags[i].str);
 			first = 0;
 		}
 	}
 	if (value == 0) {
-		size_written += printf("0");
+		size_written += dprintf(STDERR_FILENO, "0");
 	}
 	return size_written;
 }

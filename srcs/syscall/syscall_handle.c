@@ -232,17 +232,33 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	} else {
 		dprintf(STDERR_FILENO, "%s(", name);
 	}
+	bool printed_arg = false;
 	for (int i = 0; i < 6; ++i) {
 		if (!desc || desc->param_types[i] == NONE) break;
 		syscall_log_param_t context = { .pid = pid, .regs = regs, .arg_index = i };
 		param_type_t type = desc->param_types[i];
-		if (i > 0) {
-			// Проверяем, был ли предыдущий аргумент выведен (не NONE и не 0 для OPEN_FLAGS/OPEN_MODE)
-			int prev_type = desc->param_types[i-1] < 0 ? -desc->param_types[i-1] : desc->param_types[i-1];
-			if (!(prev_type == OPEN_FLAGS || prev_type == OPEN_MODE))
-				dprintf(STDERR_FILENO, ", ");
-		}
+		bool should_print = true;
+		
+		// Determine if this argument should be printed
 		switch (type < 0 ? -type : type) {
+			case OPEN_FLAGS:
+				should_print = (args[i] != 0);
+				break;
+			case OPEN_MODE:
+				should_print = (args[i] != 0);
+				break;
+			default:
+				should_print = true;
+				break;
+		}
+		
+		if (should_print) {
+			if (printed_arg) {
+				dprintf(STDERR_FILENO, ", ");
+			}
+			printed_arg = true;
+			
+			switch (type < 0 ? -type : type) {
 			case STRING: {
 				char *str = read_string_via_proc(pid, args[i]);
 				if (str) {
@@ -256,16 +272,10 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case POINTER: log_PTR(args[i]); break;
 			case HEX: log_HEX(args[i]); break;
 			case OPEN_FLAGS:
-				if (args[i] != 0)
-					log_OPEN_FLAGS(args[i]);
-				else if (desc->param_types[i+1] != NONE)
-					dprintf(STDERR_FILENO, "0");
+				log_OPEN_FLAGS(args[i]);
 				break;
 			case OPEN_MODE:
-				if (args[i] != 0)
-					log_OPEN_MODE(args[i]);
-				else if (desc->param_types[i+1] != NONE)
-					dprintf(STDERR_FILENO, "0");
+				log_OPEN_MODE(args[i]);
 				break;
 			case MMAP_FLAGS: log_MMAP_FLAGS(args[i]); break;
 			case MEM_PROT: log_MEM_PROT(args[i]); break;
@@ -319,6 +329,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 				log_OPENAT_DIRFD(args[i]);
 				break;
 			default: dprintf(STDERR_FILENO, "%lld", args[i]);
+		}
 		}
 	}
 	dprintf(STDERR_FILENO, ")");
