@@ -64,6 +64,59 @@ static void print_ptr_special(unsigned long long value) {
 	}
 }
 
+#define CSIGNAL 0x000000ff
+#define CLONE_VM 0x00000100
+#define CLONE_FS 0x00000200
+#define CLONE_FILES 0x00000400
+#define CLONE_SIGHAND 0x00000800
+#define CLONE_PIDFD 0x00001000
+#define CLONE_PTRACE 0x00002000
+#define CLONE_VFORK 0x00004000
+#define CLONE_PARENT 0x00008000
+#define CLONE_THREAD 0x00010000
+#define CLONE_NEWNS 0x00020000
+#define CLONE_SYSVSEM 0x00040000
+#define CLONE_SETTLS 0x00080000
+#define CLONE_PARENT_SETTID 0x00100000
+#define CLONE_CHILD_CLEARTID 0x00200000
+#define CLONE_DETACHED 0x00400000
+#define CLONE_UNTRACED 0x00800000
+#define CLONE_CHILD_SETTID 0x01000000
+#define CLONE_NEWCGROUP 0x02000000
+#define CLONE_NEWUTS 0x04000000
+#define CLONE_NEWIPC 0x08000000
+#define CLONE_NEWUSER 0x10000000
+#define CLONE_NEWPID 0x20000000
+#define CLONE_NEWNET 0x40000000
+#define CLONE_IO 0x80000000
+
+static const flag_str_t clone_flags[] = {
+    FLAG_STR(CLONE_VM), FLAG_STR(CLONE_FS), FLAG_STR(CLONE_FILES),
+    FLAG_STR(CLONE_SIGHAND), FLAG_STR(CLONE_PIDFD), FLAG_STR(CLONE_PTRACE),
+    FLAG_STR(CLONE_VFORK), FLAG_STR(CLONE_PARENT), FLAG_STR(CLONE_THREAD),
+    FLAG_STR(CLONE_NEWNS), FLAG_STR(CLONE_SYSVSEM), FLAG_STR(CLONE_SETTLS),
+    FLAG_STR(CLONE_PARENT_SETTID), FLAG_STR(CLONE_CHILD_CLEARTID),
+    FLAG_STR(CLONE_DETACHED), FLAG_STR(CLONE_UNTRACED),
+    FLAG_STR(CLONE_CHILD_SETTID), FLAG_STR(CLONE_NEWCGROUP),
+    FLAG_STR(CLONE_NEWUTS), FLAG_STR(CLONE_NEWIPC), FLAG_STR(CLONE_NEWUSER),
+    FLAG_STR(CLONE_NEWPID), FLAG_STR(CLONE_NEWNET), FLAG_STR(CLONE_IO),
+};
+
+static void print_clone_details(pid_t pid, struct user_regs_struct *regs)
+{
+    (void)pid;
+	uint64_t child_stack = regs->rsi;
+	uint64_t flags = regs->rdi;
+	uint64_t child_tidptr = regs->rdx;
+
+	dprintf(STDERR_FILENO, "child_stack=");
+    log_PTR(child_stack);
+    dprintf(STDERR_FILENO, ", flags=");
+    flags_log(flags, clone_flags, sizeof(clone_flags) / sizeof(clone_flags[0]));
+    dprintf(STDERR_FILENO, ", child_tidptr=");
+    log_PTR(child_tidptr);
+}
+
 /**
  * @brief Handle syscall logging
  *
@@ -188,7 +241,11 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		return;
 	}
 	
-	dprintf(STDERR_FILENO, "%s(", name);
+	if (syscall_no == 56) { // clone
+		print_clone_details(pid, regs);
+	} else {
+		dprintf(STDERR_FILENO, "%s(", name);
+	}
 	for (int i = 0; i < 6; ++i) {
 		if (!desc || desc->param_types[i] == NONE) break;
 		if (i > 0) dprintf(STDERR_FILENO, ", ");
@@ -255,11 +312,12 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case MSGBUF_STRUCT: log_MSGBUF_STRUCT(args[i], &context); break;
 			case MSGFLG: log_MSGFLG(args[i]); break;
 			case MSGCTL_CMD: log_MSGCTL_CMD(args[i]); break;
-			default:
-				log_PTR(args[i]);
-				break;
+			default: dprintf(STDERR_FILENO, "%lld", args[i]);
 		}
 	}
+	if (syscall_no != 56)
+		dprintf(STDERR_FILENO, ")");
+
 	long ret = regs->rax;
 	// Print return value for pointer-returning syscalls as hex or special
 	if (strcmp(name, "brk") == 0 || strcmp(name, "mmap") == 0 || strcmp(name, "mmap2") == 0) {
@@ -276,6 +334,12 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		dprintf(STDERR_FILENO, ") = -1 (%s)\n", strerror(err));
 	} else {
 		dprintf(STDERR_FILENO, ") = %ld\n", ret);
+	}
+
+	if (current_syscall_no != -1 && (long)regs->rax < 0) {
+		// Print error message for failed syscall
+		int err = -regs->rax;
+		dprintf(STDERR_FILENO, "Error: %s (errno=%d)\n", strerror(err), err);
 	}
 }
 
