@@ -47,7 +47,6 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 	extern failed_execve_t last_failed_execve;
 	extern void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
 	
-	// Wait for the child to stop (already done in exec_program)
 	// Устанавливаем опции для ptrace, чтобы получать SIGTRAP|0x80 на syscalls
 	if (ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACESYSGOOD) == -1) {
 		perror("ptrace SETOPTIONS");

@@ -114,11 +114,7 @@ This project recreates the core functionality of the original `strace` utility, 
 
 ```bash
 # Trace with specific system calls
-./ft_strace -e trace=write,read ls
-
-# Trace existing process (requires root)
-sudo ./ft_strace -p <PID>
-```
+./ft_strace -c echo "Hello, World!"
 
 ### Output Format
 
