@@ -6,7 +6,7 @@
  * ARG_TYPE3, ARG_TYPE4, ARG_TYPE5, ARG_TYPE6 } } */
 const syscall_description_t x86_64_syscalls[] = {
 	[0] = {"read", INTEGER, {-SIGNED_INT, MEMSEG, INTEGER, NONE}, NULL},
-	[1] = {"write", INTEGER, {-MEMSEG, -MEMSEG, -INTEGER, NONE}, NULL},
+	[1] = {"write", INTEGER, {SIGNED_INT, MEMSEG, INTEGER, NONE}, NULL},
 	[2] = {"open", INTEGER, {STRING, OPEN_FLAGS, OPEN_MODE, NONE}, NULL},
 	[3] = {"close", INTEGER, {-INTEGER, NONE}, NULL},
 	[4] = {"stat", INTEGER, {-STRING, STAT_STRUCT, NONE}, NULL},
