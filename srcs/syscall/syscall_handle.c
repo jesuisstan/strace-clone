@@ -15,7 +15,6 @@
 static char *read_string_via_proc(pid_t pid, unsigned long addr);
 
 // Global variable to track current syscall number
-static int current_syscall_no = -1;
 char *execve_filename = NULL;
 
 // Global variable to track statistics mode
@@ -45,7 +44,7 @@ void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, i
 	}
 	dprintf(STDERR_FILENO, "] , %p /* %d vars */) = ", (void*)envp_ptr, env_count);
 	if (ret < 0) {
-		dprintf(STDERR_FILENO, "-1 (%s)\n", strerror(err));
+		dprintf(STDERR_FILENO, "-1 %s (%s)\n", ft_errnoname(err), strerror(err));
 	} else {
 		dprintf(STDERR_FILENO, "%ld\n", ret);
 	}
@@ -182,18 +181,6 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	if (!is_exit)
 		return;
 	
-	// Special handling for execve on entry
-	if (syscall_no == 59) { // execve
-		current_syscall_no = syscall_no;
-		if (execve_filename) {
-			free(execve_filename);
-		}
-		execve_filename = read_string_via_proc(pid, regs->rdi);
-		if (!execve_filename) {
-			execve_filename = strdup("(error)");
-		}
-	}
-	
 	if (g_statistics_mode) {
 		return;
 	}
@@ -242,6 +229,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 	}
 	
 	if (syscall_no == 56) { // clone
+		dprintf(STDERR_FILENO, "clone(");
 		print_clone_details(pid, regs);
 	} else {
 		dprintf(STDERR_FILENO, "%s(", name);
@@ -250,7 +238,8 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		if (!desc || desc->param_types[i] == NONE) break;
 		if (i > 0) dprintf(STDERR_FILENO, ", ");
 		syscall_log_param_t context = { .pid = pid, .regs = regs, .arg_index = i };
-		switch (desc->param_types[i]) {
+		param_type_t type = desc->param_types[i];
+		switch (type < 0 ? -type : type) {
 			case STRING: {
 				char *str = read_string_via_proc(pid, args[i]);
 				if (str) {
@@ -312,34 +301,29 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case MSGBUF_STRUCT: log_MSGBUF_STRUCT(args[i], &context); break;
 			case MSGFLG: log_MSGFLG(args[i]); break;
 			case MSGCTL_CMD: log_MSGCTL_CMD(args[i]); break;
+			case UNSHARE_FLAGS: flags_log(args[i], clone_flags, sizeof(clone_flags) / sizeof(clone_flags[0])); break;
+			case OPENAT_DIRFD: log_OPENAT_DIRFD(args[i]); break;
 			default: dprintf(STDERR_FILENO, "%lld", args[i]);
 		}
 	}
-	if (syscall_no != 56)
-		dprintf(STDERR_FILENO, ")");
+	dprintf(STDERR_FILENO, ")");
 
 	long ret = regs->rax;
 	// Print return value for pointer-returning syscalls as hex or special
 	if (strcmp(name, "brk") == 0 || strcmp(name, "mmap") == 0 || strcmp(name, "mmap2") == 0) {
 		if (ret < 0) {
 			int err = -ret;
-			dprintf(STDERR_FILENO, ") = -1 (%s)\n", strerror(err));
+			dprintf(STDERR_FILENO, " = -1 %s (%s)\n", ft_errnoname(err), strerror(err));
 		} else {
-			dprintf(STDERR_FILENO, ") = ");
+			dprintf(STDERR_FILENO, " = ");
 			print_ptr_special((unsigned long long)ret);
 			dprintf(STDERR_FILENO, "\n");
 		}
 	} else if (ret < 0) {
 		int err = -ret;
-		dprintf(STDERR_FILENO, ") = -1 (%s)\n", strerror(err));
+		dprintf(STDERR_FILENO, " = -1 %s (%s)\n", ft_errnoname(err), strerror(err));
 	} else {
-		dprintf(STDERR_FILENO, ") = %ld\n", ret);
-	}
-
-	if (current_syscall_no != -1 && (long)regs->rax < 0) {
-		// Print error message for failed syscall
-		int err = -regs->rax;
-		dprintf(STDERR_FILENO, "Error: %s (errno=%d)\n", strerror(err), err);
+		dprintf(STDERR_FILENO, " = %ld\n", ret);
 	}
 }
 

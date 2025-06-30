@@ -122,12 +122,18 @@ typedef enum {
 	OPENAT_DIRFD,
 	RLIMIT64_STRUCT,
 	NEWFSTATAT_FLAGS,
-	PRLIMIT_RESOURCE
+	PRLIMIT_RESOURCE,
+	UNSHARE_FLAGS
 } param_type_t;
+
+typedef void (*custom_syscall_handler_t)(pid_t pid,
+									   struct user_regs_struct *regs);
 
 typedef struct {
 	const char *name;
+	param_type_t return_type;
 	param_type_t param_types[6];
+	custom_syscall_handler_t custom_handler;
 } syscall_description_t;
 
 extern const syscall_description_t x86_64_syscalls[];
