@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <sys/user.h>
+#include <stdint.h>
 #include <types.h>
 #include <stdbool.h>
 
@@ -138,7 +139,8 @@ typedef struct {
 
 extern const syscall_description_t x86_64_syscalls[];
 
-const char *syscall_get_description(int syscall_no);
 void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit);
+
+const syscall_description_t *syscall_get_description(uint64_t syscall_no, architecture_t type);
 
 #endif

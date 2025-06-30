@@ -10,6 +10,8 @@
 #include <sys/mman.h>
 #include <stdbool.h>
 #include "param_log/param_log.h"
+#include <stdint.h>
+#include "types.h"
 
 // Function prototypes
 static char *read_string_via_proc(pid_t pid, unsigned long addr);
@@ -185,15 +187,11 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		return;
 	}
 	
-	const char *name = syscall_get_description(syscall_no);
+	const char *name = syscall_get_description(syscall_no, X86_64)->name;
 	if (!name) name = "unknown";
 	
 	// Try to get parameter types
-	extern const syscall_description_t x86_64_syscalls[];
-	const syscall_description_t *desc = NULL;
-	if (syscall_no >= 0 && syscall_no < 335) {
-		desc = &x86_64_syscalls[syscall_no];
-	}
+	const syscall_description_t *desc = syscall_get_description(syscall_no, X86_64);
 	
 	unsigned long long args[6] = {
 		regs->rdi,

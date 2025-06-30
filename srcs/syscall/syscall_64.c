@@ -1,5 +1,9 @@
 #include "syscall_64.h"
 
+// https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md#x86-32_bit
+
+/* [SYSCALL_NO] = { "SYSCALL_NAME", RETURN_TYPE, { ARG_TYPE1, ARG_TYPE2,
+ * ARG_TYPE3, ARG_TYPE4, ARG_TYPE5, ARG_TYPE6 } } */
 const syscall_description_t x86_64_syscalls[] = {
 	[0] = {"read", INTEGER, {-SIGNED_INT, MEMSEG, INTEGER, NONE}, NULL},
 	[1] = {"write", INTEGER, {-MEMSEG, -MEMSEG, -INTEGER, NONE}, NULL},
@@ -365,12 +369,4 @@ const syscall_description_t x86_64_syscalls[] = {
 	[339] = {"rseq", INTEGER, {POINTER, INTEGER, INTEGER, INTEGER, NONE}, NULL},
 };
 
-const char *syscall_get_description(int syscall_no)
-{
-    static const char *unknown = "unknown";
-    if (syscall_no < 0 || syscall_no >= (int)(sizeof(x86_64_syscalls)/sizeof(x86_64_syscalls[0])))
-        return unknown;
-    if (!x86_64_syscalls[syscall_no].name)
-        return unknown;
-    return x86_64_syscalls[syscall_no].name;
-}
+const size_t x86_64_syscalls_count = sizeof(x86_64_syscalls) / sizeof(x86_64_syscalls[0]);

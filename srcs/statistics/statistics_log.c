@@ -48,7 +48,7 @@ void statistics_log(t_statistics *statistics) {
 		double seconds = (double)entry->total_time / 1000000.0;
 		double usecs_per_call = (double)entry->total_time / (double)entry->call_count;
 		
-		const char *syscall_name = syscall_get_description(entry->syscall_no);
+		const char *syscall_name = syscall_get_description(entry->syscall_no, X86_64)->name;
 		if (!syscall_name) {
 			syscall_name = "unknown";
 		}
