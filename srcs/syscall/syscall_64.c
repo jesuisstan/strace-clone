@@ -1,6 +1,6 @@
 #include "syscall_64.h"
 
-// https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md#x86-32_bit
+// https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md#x86_64-64_bit
 
 /* [SYSCALL_NO] = { "SYSCALL_NAME", RETURN_TYPE, { ARG_TYPE1, ARG_TYPE2,
  * ARG_TYPE3, ARG_TYPE4, ARG_TYPE5, ARG_TYPE6 } } */
@@ -367,6 +367,19 @@ const syscall_description_t x86_64_syscalls[] = {
 	[337] = {"statx", INTEGER, {-OPENAT_DIRFD, -STRING, -HEX, -HEX, -STAT_STRUCT, NONE}, NULL},
 	[338] = {"io_pgetevents", INTEGER, {HEX, INTEGER, INTEGER, POINTER, POINTER, POINTER}, NULL},
 	[339] = {"rseq", INTEGER, {POINTER, INTEGER, INTEGER, INTEGER, NONE}, NULL},
+	[424] = {"pidfd_send_signal", INTEGER, {-INTEGER, -SIGNAL_NAME, -SIGINFO, -INTEGER, NONE}, NULL},
+	[425] = {"io_uring_setup", INTEGER, {-INTEGER, -POINTER, NONE}, NULL},
+	[426] = {"io_uring_enter", INTEGER, {-INTEGER, -INTEGER, -INTEGER, -INTEGER, -POINTER, -INTEGER}, NULL},
+	[427] = {"io_uring_register", INTEGER, {-INTEGER, -INTEGER, -INTEGER, NONE}, NULL},
+	[428] = {"open_tree", INTEGER, {-INTEGER, -STRING, -INTEGER, NONE}, NULL},
+	[429] = {"move_mount", INTEGER, {-INTEGER, -STRING, -INTEGER, -STRING, -MOUNT_FLAGS, NONE}, NULL},
+	[430] = {"fsopen", INTEGER, {-STRING, -INTEGER, NONE}, NULL},
+	[431] = {"fsconfig", INTEGER, {-INTEGER, -INTEGER, -INTEGER, NONE}, NULL},
+	[432] = {"fsmount", INTEGER, {-INTEGER, -INTEGER, -INTEGER, -INTEGER, NONE}, NULL},
+	[433] = {"fspick", INTEGER, {-INTEGER, -INTEGER, -INTEGER, NONE}, NULL},
+	[434] = {"pidfd_open", INTEGER, {-INTEGER, -INTEGER, NONE}, NULL},
+	[435] = {"clone3", INTEGER, {POINTER, INTEGER, NONE}, NULL},
+	[436] = {"close_range", INTEGER, {-INTEGER, -INTEGER, NONE}, NULL},
 };
 
 const size_t x86_64_syscalls_count = sizeof(x86_64_syscalls) / sizeof(x86_64_syscalls[0]);
