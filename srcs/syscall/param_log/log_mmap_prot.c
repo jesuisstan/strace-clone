@@ -16,6 +16,6 @@ static const flag_str_t mmap_prot_flags[] = {
 int log_MEM_PROT(uint64_t value)
 {
 	if (value == 0)
-		return printf("PROT_NONE");
+		return dprintf(STDERR_FILENO, "PROT_NONE");
 	return flags_log(value, mmap_prot_flags, sizeof(mmap_prot_flags) / sizeof(mmap_prot_flags[0]));
 }
