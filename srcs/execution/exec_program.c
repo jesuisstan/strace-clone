@@ -10,9 +10,46 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 // External variable to reset execve printing flag
 extern bool execve_printed;
+
+/**
+ * @brief Check if a program exists and is executable
+ * @param program_name The name of the program to check
+ * @return 1 if program exists and is executable, 0 otherwise
+ */
+static int program_exists(const char *program_name)
+{
+	if (!program_name) return 0;
+	
+	// If it's an absolute path, check if file exists and is executable
+	if (program_name[0] == '/') {
+		return access(program_name, X_OK) == 0;
+	}
+	
+	// For relative paths or commands in PATH, search in PATH
+	char *path_env = getenv("PATH");
+	if (!path_env) return 0;
+	
+	char *path_copy = strdup(path_env);
+	if (!path_copy) return 0;
+	
+	char *dir = strtok(path_copy, ":");
+	while (dir) {
+		char full_path[PATH_MAX];
+		snprintf(full_path, sizeof(full_path), "%s/%s", dir, program_name);
+		if (access(full_path, X_OK) == 0) {
+			free(path_copy);
+			return 1;
+		}
+		dir = strtok(NULL, ":");
+	}
+	
+	free(path_copy);
+	return 0;
+}
 
 /**
  * @brief Execute a program
@@ -42,6 +79,12 @@ int exec_program(const t_config *config, t_statistics *statistics)
 	if (!program) {
 		fprintf(stderr, "No program specified\n");
 		return -1;
+	}
+	
+	// Check if program exists before forking
+	if (!program_exists(program)) {
+		fprintf(stderr, "ft_strace: Cannot find executable '%s'\n", program);
+		return 1;
 	}
 	
 	// Reset execve printing flag for new process
