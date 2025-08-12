@@ -336,6 +336,18 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case OPENAT_DIRFD:
 				log_OPENAT_DIRFD(args[i]);
 				break;
+			case PRCTL_OPTION:
+				log_PRCTL_OPTION(args[i]);
+				break;
+			case ARCH_PRCTL_OPTION:
+				log_ARCH_PRCTL_OPTION(args[i]);
+				break;
+			case PRLIMIT_RESOURCE:
+				log_PRLIMIT_RESOURCE(args[i]);
+				break;
+			case GETRANDOM_FLAGS:
+				log_GETRANDOM_FLAGS(args[i]);
+				break;
 			default: dprintf(STDERR_FILENO, "%lld", args[i]);
 		}
 		}
