@@ -390,6 +390,6 @@ const syscall_description_t i386_syscalls[] = {
 	[380] = {"pkey_mprotect", INTEGER, {-POINTER, -INTEGER, -INTEGER, -INTEGER, NONE}, NULL},
 	[381] = {"pkey_alloc", INTEGER, {-INTEGER, -INTEGER, NONE}, NULL},
 	[382] = {"pkey_free", INTEGER, {-INTEGER, NONE}, NULL},
-	[383] = {"statx", INTEGER, {-INTEGER, -STRING, -INTEGER, -INTEGER, POINTER, NONE}, NULL},
+	[383] = {"statx", INTEGER, {INTEGER, STRING, INTEGER, INTEGER, POINTER, NONE}, NULL},
 	[384] = {"arch_prctl", INTEGER, {ARCH_PRCTL_OPTION, HEX, NONE}, NULL},
 };

@@ -42,10 +42,15 @@ re: fclean ft_strace
 
 -include $(OBJS:.o=.d)
 
-.PHONY: all clean fclean re threads_test run_threads_test
+.PHONY: all clean fclean re threads_test run_threads_test test
 
 # Компиляция и запуск теста одной командой
 .PHONY: test_threads
 
 test_threads:
 	$(CC) $(CFLAGS) -pthread threads_test.c -o threads_test && ./ft_strace ./threads_test
+
+# Test ft_strace with basic Linux commands
+test: ft_strace
+	@echo "🧪 Running ft_strace tests..."
+	./test_ft_strace.sh
