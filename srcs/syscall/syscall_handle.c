@@ -348,6 +348,9 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case GETRANDOM_FLAGS:
 				log_GETRANDOM_FLAGS(args[i]);
 				break;
+			case IOCTL_CMD:
+				log_IOCTL_CMD(args[i]);
+				break;
 			default: dprintf(STDERR_FILENO, "%lld", args[i]);
 		}
 		}

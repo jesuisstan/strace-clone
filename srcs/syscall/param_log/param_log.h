@@ -697,6 +697,7 @@ int log_MLOCKALL_FLAGS(uint64_t value);
 int log_PRCTL_OPTION(uint64_t value);
 int log_ARCH_PRCTL_OPTION(uint64_t value);
 int log_GETRANDOM_FLAGS(uint64_t value);
+int log_IOCTL_CMD(uint64_t value);
 int log_KERNEL_TIMEX_STRUCT(uint64_t value, syscall_log_param_t *context);
 int log_MOUNT_FLAGS(uint64_t value);
 int log_SWAP_FLAGS(uint64_t value);
