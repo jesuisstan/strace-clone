@@ -151,7 +151,10 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		execve_argc_in = 0;
 		if (execve_argv_in) {
 			while (1) {
-				unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, execve_argv_in + execve_argc_in * sizeof(unsigned long), NULL);
+				unsigned long ptr = 0;
+				if (remote_memcpy(&ptr, pid, (void*)(execve_argv_in + execve_argc_in * sizeof(unsigned long)), sizeof(unsigned long)) < 0) {
+					break;
+				}
 				if (ptr == 0) break;
 				execve_argc_in++;
 			}
@@ -162,8 +165,10 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			execve_argv_saved = malloc(execve_argc_in * sizeof(char*));
 			if (execve_argv_saved) {
 				for (int i = 0; i < execve_argc_in; i++) {
-					unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, execve_argv_in + i * sizeof(unsigned long), NULL);
-					execve_argv_saved[i] = read_string_via_proc(pid, ptr);
+					unsigned long ptr = 0;
+					if (remote_memcpy(&ptr, pid, (void*)(execve_argv_in + i * sizeof(unsigned long)), sizeof(unsigned long)) >= 0) {
+						execve_argv_saved[i] = read_string_via_proc(pid, ptr);
+					}
 				}
 			}
 		}
@@ -171,7 +176,10 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		execve_envc_in = 0;
 		if (execve_envp_in) {
 			while (1) {
-				unsigned long ptr = ptrace(PTRACE_PEEKDATA, pid, execve_envp_in + execve_envc_in * sizeof(unsigned long), NULL);
+				unsigned long ptr = 0;
+				if (remote_memcpy(&ptr, pid, (void*)(execve_envp_in + execve_envc_in * sizeof(unsigned long)), sizeof(unsigned long)) < 0) {
+					break;
+				}
 				if (ptr == 0) break;
 				execve_envc_in++;
 			}

@@ -32,13 +32,13 @@ This project recreates the core functionality of the original `strace` utility, 
 - ✅ **String Truncation**: Intelligently truncate long strings with `...` notation
 - ✅ **Binary Data Formatting**: Display binary data in hex format with escape sequences
 - ✅ **Special Syscall Handling**: Custom formatting for complex system calls like `execve`, `mmap`, `ioctl`
-- ✅ **Memory Safety**: Safe reading of process memory using `ptrace`
+- ✅ **Memory Safety**: Safe reading of process memory using `process_vm_readv`
 
 ### Supported System Calls
 
 - **File Operations**: `open`, `openat`, `read`, `write`, `pread64`, `close`, `fstat`
 - **Memory Management**: `mmap`, `munmap`, `mprotect`, `brk`
-- **Process Control**: `execve`, `exit`, `exit_group`, `fork`, `clone`
+- **Process Control**: `execve`, `exit`, `exit_group`, `fork`, `clone`, `clone3`
 - **System Information**: `getrandom`, `arch_prctl`, `set_tid_address`
 - **File System**: `access`, `statfs`, `getdents64`
 - **And many more...**
@@ -47,17 +47,29 @@ This project recreates the core functionality of the original `strace` utility, 
 
 ### Architecture
 
-- **Process Tracing**: Uses `ptrace(PTRACE_TRACEME)` for child processes and `ptrace(PTRACE_SEIZE)` for existing processes
+- **Process Tracing**: Uses `ptrace(PTRACE_SEIZE)` for attaching to processes and `ptrace(PTRACE_INTERRUPT)` for starting tracing
 - **System Call Interception**: Monitors syscall entry/exit using `PTRACE_SYSCALL`
-- **Memory Reading**: Safely reads process memory using `ptrace(PTRACE_PEEKDATA)`
+- **Memory Reading**: Safely reads process memory using `process_vm_readv` system call
 - **Signal Handling**: Blocks and handles signals to prevent interference
+
+### Allowed PTRACE Options
+
+This implementation strictly follows the subject requirements and uses only the following PTRACE options:
+
+- `PTRACE_SYSCALL` - Monitor system call entry and exit
+- `PTRACE_GETREGSET` - Get register sets from traced process
+- `PTRACE_SETOPTIONS` - Set tracing options
+- `PTRACE_GETSIGINFO` - Get signal information
+- `PTRACE_SEIZE` - Attach to running process
+- `PTRACE_INTERRUPT` - Interrupt traced process
+- `PTRACE_LISTEN` - Listen for process events
 
 ### Key Components
 
 - **Main Loop**: Coordinates process tracing and system call monitoring
 - **Syscall Handler**: Decodes and formats system call information
 - **Parameter Logger**: Handles different parameter types (strings, integers, structures)
-- **Memory Reader**: Safely reads data from traced process memory
+- **Memory Reader**: Safely reads data from traced process memory using `process_vm_readv`
 - **Error Handler**: Manages and displays error conditions
 
 ## 📦 Building and Installation
@@ -95,6 +107,7 @@ This project recreates the core functionality of the original `strace` utility, 
 - **Debug build**: `make debug`
 - **Clean build**: `make clean`
 - **Reinstall**: `make re`
+- **Test with threads**: `make test_threads`
 
 ## 🎮 Usage
 
@@ -113,8 +126,12 @@ This project recreates the core functionality of the original `strace` utility, 
 ### Advanced Usage
 
 ```bash
+# Test with multi-threaded program
+make test_threads
+
 # Trace with specific system calls
 ./ft_strace -c echo "Hello, World!"
+```
 
 ### Output Format
 
@@ -185,7 +202,7 @@ This project demonstrates several important system programming concepts:
 
 ### Memory Management
 
-- Safe reading of process memory
+- Safe reading of process memory using `process_vm_readv`
 - Handling different data types
 - Memory layout understanding
 
@@ -208,6 +225,7 @@ This project demonstrates several important system programming concepts:
 - **ptrace(2)**: `man 2 ptrace`
 - **syscalls(2)**: `man 2 syscalls`
 - **signal(7)**: `man 7 signal`
+- **process_vm_readv(2)**: `man 2 process_vm_readv`
 
 ### Learning Resources
 
@@ -235,6 +253,7 @@ strace-clone/
 │   │   └── custom_handlers/ # Custom syscall handlers
 │   └── utils/               # Utility functions
 ├── Makefile                 # Build configuration
+├── threads_test.c           # Multi-threaded test program
 └── README.md                # This file
 ```
 

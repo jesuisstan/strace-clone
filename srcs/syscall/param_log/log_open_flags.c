@@ -22,7 +22,7 @@ int log_OPEN_FLAGS(uint64_t value)
 {
 	int size_written = 0;
 	int first = 1;
-	// Обработка режима доступа
+	// Handle access mode
 	if ((value & O_ACCMODE) == O_RDONLY) {
 		size_written += dprintf(STDERR_FILENO, "O_RDONLY");
 		first = 0;

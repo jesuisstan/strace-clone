@@ -55,26 +55,24 @@ int exec_program(const t_config *config, t_statistics *statistics)
 	}
 	
 	if (pid == 0) {
-		// Child process
-		// Enable tracing
-		if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1) {
-			perror("ptrace TRACEME");
-			exit(1);
-		}
-		raise(SIGSTOP);
-		// Execute the program
+		// Child process - just execute the program
 		if (execvp(program, program_args) == -1) {
 			perror("execvp");
 			exit(1);
 		}
 	} else {
-		// Parent process
-		// Wait for child to stop on first instruction
-		int status;
-		if (waitpid(pid, &status, 0) == -1) {
-			perror("waitpid");
+		// Parent process - attach to child using PTRACE_SEIZE
+		if (ptrace(PTRACE_SEIZE, pid, NULL, NULL) == -1) {
+			perror("ptrace PTRACE_SEIZE");
 			return -1;
-	}
+		}
+		
+		// Interrupt the child to start tracing
+		if (ptrace(PTRACE_INTERRUPT, pid, NULL, NULL) == -1) {
+			perror("ptrace PTRACE_INTERRUPT");
+			return -1;
+		}
+		
 		// Start analysis routine
 		return analysis_routine(pid, statistics);
 	}

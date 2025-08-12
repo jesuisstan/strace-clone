@@ -47,12 +47,18 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 	extern failed_execve_t last_failed_execve;
 	extern void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
 	
-	// Устанавливаем опции для ptrace, чтобы получать SIGTRAP|0x80 на syscalls
+	// Wait for the child to stop after PTRACE_INTERRUPT
+	if (waitpid(pid, &status, 0) == -1) {
+		perror("waitpid after PTRACE_INTERRUPT");
+		return -1;
+	}
+	
+	// Set ptrace options to receive SIGTRAP|0x80 on syscalls
 	if (ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACESYSGOOD) == -1) {
 		perror("ptrace SETOPTIONS");
 		return -1;
 	}
-	// Continue child after initial SIGSTOP
+	// Continue child after initial stop
 	if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) == -1) {
 		perror("ptrace initial SYSCALL");
 		return -1;
@@ -66,7 +72,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 		}
 		// Check if child exited
 		if (WIFEXITED(status)) {
-			// Если не было успешного execve, вывести последний неудачный
+			// If there was no successful execve, print the last failed one
 			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
 				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
 				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
@@ -78,7 +84,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 		}
 		// Check if child was killed by signal
 		if (WIFSIGNALED(status)) {
-			// Если не было успешного execve, вывести последний неудачный
+			// If there was no successful execve, print the last failed one
 			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
 				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
 				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
