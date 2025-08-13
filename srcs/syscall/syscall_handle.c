@@ -351,6 +351,18 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case IOCTL_CMD:
 				log_IOCTL_CMD(args[i]);
 				break;
+			case ADVISE:
+				log_ADVISE(args[i]);
+				break;
+			case CLONE3_STRUCT:
+				log_CLONE3_STRUCT(args[i], &context);
+				break;
+			case FUTEX_OP:
+				log_FUTEX_OP(args[i]);
+				break;
+			case FUTEX_FLAGS:
+				log_FUTEX_FLAGS(args[i]);
+				break;
 			default: dprintf(STDERR_FILENO, "%lld", args[i]);
 		}
 		}

@@ -127,7 +127,10 @@ typedef enum {
 	RLIMIT64_STRUCT,
 	NEWFSTATAT_FLAGS,
 	PRLIMIT_RESOURCE,
-	UNSHARE_FLAGS
+	UNSHARE_FLAGS,
+	CLONE3_STRUCT,
+	FUTEX_OP,
+	FUTEX_FLAGS
 } param_type_t;
 
 typedef void (*custom_syscall_handler_t)(pid_t pid,

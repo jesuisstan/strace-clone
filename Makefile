@@ -48,7 +48,7 @@ re: fclean ft_strace
 .PHONY: test_threads
 
 test_threads:
-	$(CC) $(CFLAGS) -pthread threads_test.c -o threads_test && ./ft_strace ./threads_test
+	$(CC) $(CFLAGS) -pthread tests/test_threads.c -o test_threads && ./ft_strace ./test_threads
 
 # Test ft_strace with basic Linux commands
 test: ft_strace

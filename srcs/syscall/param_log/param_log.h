@@ -720,3 +720,6 @@ int log_OPENAT_DIRFD(int value);
 int log_RLIMIT64_STRUCT(uint64_t value, syscall_log_param_t *context);
 int log_NEWFSTATAT_FLAGS(uint64_t value);
 int log_PRLIMIT_RESOURCE(uint64_t value);
+int log_CLONE3_STRUCT(uint64_t value, syscall_log_param_t *context);
+int log_FUTEX_OP(uint64_t value);
+int log_FUTEX_FLAGS(uint64_t value);

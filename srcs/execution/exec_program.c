@@ -29,7 +29,12 @@ static int program_exists(const char *program_name)
 		return access(program_name, X_OK) == 0;
 	}
 	
-	// For relative paths or commands in PATH, search in PATH
+	// For relative paths, first check current directory
+	if (access(program_name, X_OK) == 0) {
+		return 1;
+	}
+	
+	// For commands in PATH, search in PATH
 	char *path_env = getenv("PATH");
 	if (!path_env) return 0;
 	
