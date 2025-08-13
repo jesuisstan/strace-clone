@@ -130,7 +130,12 @@ typedef enum {
 	UNSHARE_FLAGS,
 	CLONE3_STRUCT,
 	FUTEX_OP,
-	FUTEX_FLAGS
+	FUTEX_FLAGS,
+	SOCKET_LEVEL,
+	SOCKET_OPTNAME,
+	FD_NUMBER,
+	PID_NUMBER,
+	EXIT_CODE
 } param_type_t;
 
 typedef void (*custom_syscall_handler_t)(pid_t pid,

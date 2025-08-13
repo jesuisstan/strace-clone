@@ -345,6 +345,9 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case PRLIMIT_RESOURCE:
 				log_PRLIMIT_RESOURCE(args[i]);
 				break;
+			case RLIMIT64_STRUCT:
+				log_RLIMIT64_STRUCT(args[i], &context);
+				break;
 			case GETRANDOM_FLAGS:
 				log_GETRANDOM_FLAGS(args[i]);
 				break;
@@ -362,6 +365,21 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 				break;
 			case FUTEX_FLAGS:
 				log_FUTEX_FLAGS(args[i]);
+				break;
+			case SOCKET_LEVEL:
+				log_SOCKET_LEVEL(args[i]);
+				break;
+			case SOCKET_OPTNAME:
+				log_SOCKET_OPTNAME(args[i]);
+				break;
+			case FD_NUMBER:
+				log_FD_NUMBER(args[i]);
+				break;
+			case PID_NUMBER:
+				log_PID_NUMBER(args[i]);
+				break;
+			case EXIT_CODE:
+				log_EXIT_CODE(args[i]);
 				break;
 			default: dprintf(STDERR_FILENO, "%lld", args[i]);
 		}

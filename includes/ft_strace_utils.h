@@ -12,7 +12,6 @@
 // Global variable to track statistics mode
 extern bool g_statistics_mode;
 
-// Custom functions that need implementation
 const char *ft_signalname(int sig);
 const char *ft_errnoname(int errnum);
 const char *ft_strerror(int errnum);

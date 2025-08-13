@@ -1,24 +1,134 @@
 #include "param_log.h"
-#include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/types.h>
+#include <errno.h>
 
-static const flag_str_t send_flags[] = {
-	FLAG_STR(MSG_OOB),		FLAG_STR(MSG_DONTROUTE),	FLAG_STR(MSG_EOR),
-	FLAG_STR(MSG_WAITALL),	FLAG_STR(MSG_CTRUNC),		FLAG_STR(MSG_TRUNC),
-	FLAG_STR(MSG_DONTWAIT), FLAG_STR(MSG_NOSIGNAL),		FLAG_STR(MSG_MORE),
-	FLAG_STR(MSG_CONFIRM),	FLAG_STR(MSG_ERRQUEUE),		FLAG_STR(MSG_RST),
-	FLAG_STR(MSG_SYN),		FLAG_STR(MSG_CONFIRM),		FLAG_STR(MSG_WAITFORONE),
-	FLAG_STR(MSG_FASTOPEN), FLAG_STR(MSG_CMSG_CLOEXEC),
-};
-
-/**
- * @brief Log send flags
- *
- * @param value the value to log
- * @return int the number of bytes written
- */
 int log_SEND_FLAGS(uint64_t value)
 {
-	return flags_log(value, send_flags, sizeof(send_flags) / sizeof(send_flags[0]));
+	bool first = true;
+	int printed = 0;
+
+	if (value == 0) {
+		return dprintf(STDERR_FILENO, "0");
+	}
+
+	if (value & MSG_OOB) {
+		printed += dprintf(STDERR_FILENO, "MSG_OOB");
+		first = false;
+	}
+
+	if (value & MSG_PEEK) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_PEEK");
+		first = false;
+	}
+
+	if (value & MSG_DONTROUTE) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_DONTROUTE");
+		first = false;
+	}
+
+	if (value & MSG_CTRUNC) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_CTRUNC");
+		first = false;
+	}
+
+	if (value & MSG_TRUNC) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_TRUNC");
+		first = false;
+	}
+
+	if (value & MSG_DONTWAIT) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_DONTWAIT");
+		first = false;
+	}
+
+	if (value & MSG_EOR) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_EOR");
+		first = false;
+	}
+
+	if (value & MSG_WAITALL) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_WAITALL");
+		first = false;
+	}
+
+	if (value & MSG_FIN) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_FIN");
+		first = false;
+	}
+
+	if (value & MSG_SYN) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_SYN");
+		first = false;
+	}
+
+	if (value & MSG_CONFIRM) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_CONFIRM");
+		first = false;
+	}
+
+	if (value & MSG_RST) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_RST");
+		first = false;
+	}
+
+	if (value & MSG_ERRQUEUE) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_ERRQUEUE");
+		first = false;
+	}
+
+	if (value & MSG_NOSIGNAL) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_NOSIGNAL");
+		first = false;
+	}
+
+	if (value & MSG_MORE) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_MORE");
+		first = false;
+	}
+
+	if (value & MSG_WAITFORONE) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_WAITFORONE");
+		first = false;
+	}
+
+	if (value & MSG_BATCH) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_BATCH");
+		first = false;
+	}
+
+	if (value & MSG_ZEROCOPY) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_ZEROCOPY");
+		first = false;
+	}
+
+	if (value & MSG_FASTOPEN) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_FASTOPEN");
+		first = false;
+	}
+
+	if (value & MSG_CMSG_CLOEXEC) {
+		if (!first) printed += dprintf(STDERR_FILENO, "|");
+		printed += dprintf(STDERR_FILENO, "MSG_CMSG_CLOEXEC");
+		first = false;
+	}
+
+	return printed;
 }
