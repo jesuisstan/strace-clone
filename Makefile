@@ -21,19 +21,12 @@ $(OBJSDIR)/%.o: $(SRCSDIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -I $(INCDIR) -MMD -MF $(@:.o=.d) -c $< -o $@
 
-# Тестовая программа с потоками
-threads_test: threads_test.c
-	$(CC) $(CFLAGS) -pthread threads_test.c -o threads_test
-
-# Запуск теста
-c: threads_test
-	./threads_test
-
 # Clean and fclean
 clean:
 	rm -rf $(OBJSDIR)
-	rm -f threads_test
-	rm -f thread_*.txt
+	rm -f test_threads
+	rm -f test_close
+	rm -f test_kill
 
 fclean: clean
 	rm -f ft_strace
@@ -44,16 +37,15 @@ re: fclean ft_strace
 
 .PHONY: all clean fclean re threads_test run_threads_test test
 
-# Компиляция и запуск теста одной командой
 .PHONY: test_threads test_close test_kill
 
-test_threads:
+test_threads: ft_strace
 	$(CC) $(CFLAGS) -pthread tests/test_threads.c -o test_threads && ./ft_strace ./test_threads
 
-test_close:
+test_close: ft_strace
 	$(CC) $(CFLAGS) tests/test_close.c -o test_close && ./ft_strace ./test_close
 
-test_kill:
+test_kill: ft_strace
 	$(CC) $(CFLAGS) tests/test_kill.c -o test_kill && ./ft_strace ./test_kill
 
 # Test ft_strace with basic Linux commands

@@ -43,6 +43,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 	int status;
 	bool is_syscall_entry = true;
 	unsigned long long syscall_start_time = 0;
+	int last_syscall_no = -1;
 	extern bool execve_success;
 	extern failed_execve_t last_failed_execve;
 	extern void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
@@ -70,46 +71,29 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 			perror("waitpid");
 			return -1;
 		}
-		// Check if child exited
-		if (WIFEXITED(status)) {
-			// If there was no successful execve, print the last failed one
-			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
-				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
-				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
-				last_failed_execve.valid = false;
-			}
-			fprintf(stderr, "+++ exited with %d +++\n", WEXITSTATUS(status));
-			fflush(stderr);
-			return status;
-		}
-		// Check if child was killed by signal
-		if (WIFSIGNALED(status)) {
-			// If there was no successful execve, print the last failed one
-			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
-				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
-				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
-				last_failed_execve.valid = false;
-			}
-			fprintf(stderr, "+++ killed by %s +++\n", strsignal(WTERMSIG(status)));
-			fflush(stderr);
-			return status;
-		}
+		
+		// Try to get registers even if process might have exited
+		// This allows us to see exit_group syscalls
+		struct user_regs_struct regs;
+		struct iovec iov = {
+			.iov_base = &regs,
+			.iov_len = sizeof(regs)
+		};
+		
 		// Check if child stopped
 		if (WIFSTOPPED(status)) {
 			// Check if it's a syscall stop
 			if (WSTOPSIG(status) == (SIGTRAP | 0x80)) {
 				// Get registers using PTRACE_GETREGSET
-				struct user_regs_struct regs;
-				struct iovec iov = {
-					.iov_base = &regs,
-					.iov_len = sizeof(regs)
-				};
 				if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
 					perror("ptrace GETREGSET");
 					return -1;
 				}
 				// Handle syscall
 				syscall_handle(pid, &regs, !is_syscall_entry);
+				
+				// Save last syscall number
+				last_syscall_no = (int)regs.orig_rax;
 				
 				// Add to statistics if enabled
 				if (statistics && !is_syscall_entry) {
@@ -173,6 +157,36 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 				}
 				continue;
 			}
+		}
+		// Check if child exited - but first try to handle exit_group syscall
+		else if (WIFEXITED(status)) {
+			// Check if the last syscall was exit_group
+			if (last_syscall_no == 231) { // exit_group
+				// Print exit_group syscall manually
+				fprintf(stderr, "exit_group(%d) = ?\n", WEXITSTATUS(status));
+				fflush(stderr);
+			}
+			// If there was no successful execve, print the last failed one
+			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
+				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
+				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
+				last_failed_execve.valid = false;
+			}
+			fprintf(stderr, "+++ exited with %d +++\n", WEXITSTATUS(status));
+			fflush(stderr);
+			return status;
+		}
+		// Check if child was killed by signal (after processing syscall)
+		else if (WIFSIGNALED(status)) {
+			// If there was no successful execve, print the last failed one
+			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
+				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
+				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
+				last_failed_execve.valid = false;
+			}
+			fprintf(stderr, "+++ killed by %s +++\n", strsignal(WTERMSIG(status)));
+			fflush(stderr);
+			return status;
 		}
 		// Continue the child
 		if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) == -1) {
