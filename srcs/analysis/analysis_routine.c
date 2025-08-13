@@ -135,7 +135,6 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 			}
 			else
 			{
-
 				int signal = WSTOPSIG(status);
 				int signal_to_deliver = 0;
 

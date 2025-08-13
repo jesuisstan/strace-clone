@@ -108,6 +108,8 @@ This implementation strictly follows the subject requirements and uses only the 
 - **Clean build**: `make clean`
 - **Reinstall**: `make re`
 - **Test with threads**: `make test_threads`
+- **Test kill cmd**: `make test_kill`
+- **Test close cmd**: `make test_close`
 
 ## 🎮 Usage
 
