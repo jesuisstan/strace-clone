@@ -27,6 +27,7 @@ clean:
 	rm -f test_threads
 	rm -f test_close
 	rm -f test_kill
+	rm -f thread_*.txt
 
 fclean: clean
 	rm -f ft_strace
