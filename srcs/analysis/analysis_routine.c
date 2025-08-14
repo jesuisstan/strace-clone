@@ -89,8 +89,10 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 					perror("ptrace GETREGSET");
 					return -1;
 				}
-				// Handle syscall
-				syscall_handle(pid, &regs, !is_syscall_entry);
+				// Handle syscall - only show syscalls after successful execve
+				if (execve_success || (int)regs.orig_rax == 59) { // 59 is execve
+					syscall_handle(pid, &regs, !is_syscall_entry);
+				}
 				
 				// Save last syscall number
 				last_syscall_no = (int)regs.orig_rax;
