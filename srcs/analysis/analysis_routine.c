@@ -10,11 +10,44 @@
 #include <sys/uio.h>
 #include <sys/time.h>
 #include <time.h>
+#include <string.h>
 
 // Define NT_PRSTATUS if not defined
 #ifndef NT_PRSTATUS
 #define NT_PRSTATUS 1
 #endif
+
+/**
+ * @brief Setup signal blocking before waitpid
+ * 
+ * Unblocks all signals before waitpid to ensure we can receive
+ * signals during the wait operation. This prevents deadlocks
+ * and allows proper signal handling during process tracing.
+ */
+static void setup_signals_before_wait(void)
+{
+	sigset_t empty;
+	sigemptyset(&empty);
+	sigprocmask(SIG_SETMASK, &empty, NULL);
+}
+
+/**
+ * @brief Block signals after waitpid
+ * 
+ * Blocks critical signals (SIGHUP, SIGQUIT, SIGPIPE, SIGTERM) after waitpid
+ * to prevent interference with the tracing process. This ensures
+ * stable tracing and prevents unexpected termination of ft_strace.
+ */
+static void block_signals_after_wait(void)
+{
+	sigset_t blocked;
+	sigemptyset(&blocked);
+	sigaddset(&blocked, SIGHUP);
+	sigaddset(&blocked, SIGQUIT);
+	sigaddset(&blocked, SIGPIPE);
+	sigaddset(&blocked, SIGTERM);
+	sigprocmask(SIG_BLOCK, &blocked, NULL);
+}
 
 /**
  * @brief Get current time in microseconds with high precision
@@ -44,6 +77,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 	bool is_syscall_entry = true;
 	unsigned long long syscall_start_time = 0;
 	int last_syscall_no = -1;
+	architecture_t current_arch = X86_64; // Default to 64-bit
 	extern bool execve_success;
 	extern failed_execve_t last_failed_execve;
 	extern void print_execve(const char *filename, unsigned long envp_ptr, int arg_count, int env_count, long ret, int err);
@@ -66,11 +100,17 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 	}
 
 	while (1) {
+		// Setup signals before waitpid (as required by checklist)
+		setup_signals_before_wait();
+		
 		// Wait for the child to stop
 		if (waitpid(pid, &status, 0) == -1) {
 			perror("waitpid");
 			return -1;
 		}
+		
+		// Block signals after waitpid (as required by checklist)
+		block_signals_after_wait();
 		
 		// Try to get registers even if process might have exited
 		// This allows us to see exit_group syscalls
@@ -79,6 +119,14 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 			.iov_base = &regs,
 			.iov_len = sizeof(regs)
 		};
+		
+		// Determine architecture based on register size
+		architecture_t detected_arch = (iov.iov_len == sizeof(struct user_regs_struct)) ? X86_64 : X86_I386;
+		if (detected_arch != current_arch) {
+			current_arch = detected_arch;
+			fprintf(stderr, "[ Process PID=%d runs in %d bit mode. ]\n", pid, (detected_arch == X86_64) ? 64 : 32);
+			fflush(stderr);
+		}
 		
 		// Check if child stopped
 		if (WIFSTOPPED(status)) {
