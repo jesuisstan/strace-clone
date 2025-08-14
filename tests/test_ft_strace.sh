@@ -24,7 +24,7 @@ run_test() {
     echo "--- ft_strace output ---"
     
     # Run ft_strace and capture output
-    if .././ft_strace $command 2>&1; then
+    if ./ft_strace $command 2>&1; then
         echo -e "${GREEN}✅ $test_name: PASSED${NC}"
     else
         echo -e "${RED}❌ $test_name: FAILED${NC}"
