@@ -37,6 +37,16 @@
 *.hex
 ft_strace
 
+# Test executables
+test_1
+test_2
+test_3
+test_4
+test_5
+test_threads
+test_close
+test_kill
+
 # Debug files
 *.dSYM/
 *.su
