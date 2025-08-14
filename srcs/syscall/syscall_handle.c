@@ -288,7 +288,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case MMAP_FLAGS: log_MMAP_FLAGS(args[i]); break;
 			case MEM_PROT: log_MEM_PROT(args[i]); break;
 			case ACCESS_MODE: log_ACCESS_MODE(args[i]); break;
-			case SIGNED_INT: log_SIGNED_INT(args[i]); break;
+			case SIGNED_INT: log_SIGNED_INT((int64_t)args[i]); break;
 			case MEMSEG: log_MEMSEG(args[i], &context); break;
 			case STAT_STRUCT: log_STAT_STRUCT(args[i], &context); break;
 			case POLL_FDS: log_POLL_FDS(args[i], &context); break;
@@ -380,6 +380,9 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 				break;
 			case EXIT_CODE:
 				log_EXIT_CODE(args[i]);
+				break;
+			case RT_SIGRETURN_STRUCT:
+				log_RT_SIGRETURN_STRUCT(args[i], &context);
 				break;
 			default: dprintf(STDERR_FILENO, "%lld", args[i]);
 		}

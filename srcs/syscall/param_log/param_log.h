@@ -729,3 +729,4 @@ int log_SEND_FLAGS(uint64_t value);
 int log_FD_NUMBER(uint64_t value);
 int log_PID_NUMBER(uint64_t value);
 int log_EXIT_CODE(uint64_t value);
+int log_RT_SIGRETURN_STRUCT(uint64_t value, syscall_log_param_t *context);

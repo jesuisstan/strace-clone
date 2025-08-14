@@ -36,7 +36,10 @@ static const char *signal_names[] = {
     [SIGWINCH] = "SIGWINCH",
     [SIGIO] = "SIGIO",
     [SIGPWR] = "SIGPWR",
-    [SIGSYS] = "SIGSYS"
+    [SIGSYS] = "SIGSYS",
+    [35] = "SIGRT_3",  // RT_3
+    [63] = "SIGRT_31",  // RT_31
+    [64] = "SIGRT_32"   // RT_32
 };
 
 const char *ft_signalname(int sig)

@@ -135,7 +135,8 @@ typedef enum {
 	SOCKET_OPTNAME,
 	FD_NUMBER,
 	PID_NUMBER,
-	EXIT_CODE
+	EXIT_CODE,
+	RT_SIGRETURN_STRUCT
 } param_type_t;
 
 typedef void (*custom_syscall_handler_t)(pid_t pid,

@@ -16,6 +16,17 @@ static syscall_description_t *get_default_syscall(uint64_t syscall_no) {
 
 const syscall_description_t *syscall_get_description(uint64_t syscall_no, architecture_t type) {
     const syscall_description_t *selected_syscall;
+    
+    // Special handling for rt_sigreturn which can have syscall number -1 (18446744073709551615)
+    if (syscall_no == 18446744073709551615ULL) {
+        // Return rt_sigreturn description (syscall number 15)
+        if (type == X86_64) {
+            return &x86_64_syscalls[15]; // rt_sigreturn
+        } else {
+            return &i386_syscalls[173]; // rt_sigreturn for 32-bit
+        }
+    }
+    
     if (type == X86_64) {
         if (syscall_no >= x86_64_syscalls_count)
             return get_default_syscall(syscall_no);
