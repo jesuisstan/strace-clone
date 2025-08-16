@@ -22,7 +22,7 @@ static int log_wait_status(int status)
 	if (WIFEXITED(status))
 	{
 		size_written +=
-			dprintf(STDERR_FILENO, "{WIFEXITED(s), WEXITSTATUS(s) == %d}", WEXITSTATUS(status));
+			dprintf(STDERR_FILENO, "{WIFEXITED(s) && WEXITSTATUS(s) == %d}", WEXITSTATUS(status));
 		first = false;
 	}
 	if (WIFSIGNALED(status))

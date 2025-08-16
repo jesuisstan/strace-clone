@@ -288,7 +288,7 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case MMAP_FLAGS: log_MMAP_FLAGS(args[i]); break;
 			case MEM_PROT: log_MEM_PROT(args[i]); break;
 			case ACCESS_MODE: log_ACCESS_MODE(args[i]); break;
-			case SIGNED_INT: log_SIGNED_INT((int64_t)args[i]); break;
+			case SIGNED_INT: log_SIGNED_INT(args[i]); break;
 			case MEMSEG: log_MEMSEG(args[i], &context); break;
 			case STAT_STRUCT: log_STAT_STRUCT(args[i], &context); break;
 			case POLL_FDS: log_POLL_FDS(args[i], &context); break;
@@ -357,6 +357,10 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 			case ADVISE:
 				log_ADVISE(args[i]);
 				break;
+			case 89: // CLOCKID_T
+			case -89: // -CLOCKID_T
+				log_CLOCKID_T(args[i]);
+				break;
 			case CLONE3_STRUCT:
 				log_CLONE3_STRUCT(args[i], &context);
 				break;
@@ -403,7 +407,11 @@ void syscall_handle(pid_t pid, struct user_regs_struct *regs, bool is_exit)
 		}
 	} else if (ret < 0) {
 		int err = -ret;
-		dprintf(STDERR_FILENO, " = -1 %s (%s)\n", ft_errnoname(err), strerror(err));
+		if (err == 516) { // ERESTART_RESTARTBLOCK
+			dprintf(STDERR_FILENO, " = ? %s (%s)\n", ft_errnoname(err), ft_strerror(err));
+		} else {
+			dprintf(STDERR_FILENO, " = -1 %s (%s)\n", ft_errnoname(err), strerror(err));
+		}
 	} else {
 		dprintf(STDERR_FILENO, " = %ld\n", ret);
 	}

@@ -155,7 +155,8 @@ static const char *error_names[] = {
     [ETIME] = "ETIME",
     [ETIMEDOUT] = "ETIMEDOUT",
     [ETXTBSY] = "ETXTBSY",
-    [EXDEV] = "EXDEV"
+    [EXDEV] = "EXDEV",
+    [516] = "ERESTART_RESTARTBLOCK"
 };
 
 const char *ft_errnoname(int errnum)
@@ -170,6 +171,9 @@ const char *ft_errnoname(int errnum)
 
 const char *ft_strerror(int errnum)
 {
+	if (errnum == 516) {
+		return "Interrupted by signal";
+	}
 	return strerror(errnum);
 }
 

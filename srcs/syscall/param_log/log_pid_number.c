@@ -3,13 +3,13 @@
 
 int log_PID_NUMBER(uint64_t value)
 {
-	// Для PID просто показываем число, но можно добавить специальные случаи
-	switch (value) {
-	case 0:
+	// Handle special cases for PID values
+	if (value == 0) {
 		return dprintf(STDERR_FILENO, "0");
-	case -1:
+	} else if (value == 4294967295ULL) {
+		// This is -1 represented as unsigned 32-bit value
 		return dprintf(STDERR_FILENO, "-1");
-	default:
+	} else {
 		return dprintf(STDERR_FILENO, "%lu", value);
 	}
 }
