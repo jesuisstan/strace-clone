@@ -15,6 +15,7 @@ extern bool g_statistics_mode;
 const char *ft_signalname(int sig);
 const char *ft_errnoname(int errnum);
 const char *ft_strerror(int errnum);
+const char *ft_sicodename(int sig, int si_code);
 char *ft_escape(const char *str, size_t size);
 void log_error(const char *context, const char *message, int show_error);
 

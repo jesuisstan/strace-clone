@@ -194,8 +194,17 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 						perror("ptrace PTRACE_GETSIGINFO");
 					} else {
 						const char *signame = ft_signalname(siginfo.si_signo);
-						fprintf(stderr, "--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n",
-								signame, signame, siginfo.si_code, siginfo.si_pid, siginfo.si_uid);
+						const char *sicodename = ft_sicodename(siginfo.si_signo, siginfo.si_code);
+						fprintf(stderr, "--- %s {si_signo=%s, si_code=%s, si_pid=%d, si_uid=%d",
+								signame, signame, sicodename, siginfo.si_pid, siginfo.si_uid);
+						
+						// Add additional fields for SIGCHLD
+						if (siginfo.si_signo == SIGCHLD) {
+							fprintf(stderr, ", si_status=%d, si_utime=%ld, si_stime=%ld",
+									siginfo.si_status, siginfo.si_utime, siginfo.si_stime);
+						}
+						
+						fprintf(stderr, "} ---\n");
 						fflush(stderr);
 					}
 					signal_to_deliver = signal;
