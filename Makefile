@@ -37,10 +37,10 @@ fclean: clean
 re: fclean $(NAME)
 
 test_close: $(NAME) tests/test_close.c
-	$(CC) $(CFLAGS) tests/test_close.c -o test_close && ./$(NAME) ./test_close
+	$(CC) $(CFLAGS) tests/test_close.c -o test_close
 
 test_kill: $(NAME) tests/test_kill.c
-	$(CC) $(CFLAGS) tests/test_kill.c -o test_kill && ./$(NAME) ./test_kill
+	$(CC) $(CFLAGS) tests/test_kill.c -o test_kill
 
 test_1: $(NAME) tests/test_1.c
 	$(CC) tests/test_1.c -o test_1

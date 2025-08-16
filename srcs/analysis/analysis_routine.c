@@ -88,8 +88,8 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 		return -1;
 	}
 	
-	// Set ptrace options to receive SIGTRAP|0x80 on syscalls
-	if (ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACESYSGOOD) == -1) {
+	// Set ptrace options
+	if (ptrace(PTRACE_SETOPTIONS, pid, 0, 0) == -1) {
 		perror("ptrace SETOPTIONS");
 		return -1;
 	}
@@ -100,7 +100,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 	}
 
 	while (1) {
-		// Setup signals before waitpid (as required by checklist)
+		// Setup signals before waitpid
 		setup_signals_before_wait();
 		
 		// Wait for the child to stop
@@ -109,7 +109,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 			return -1;
 		}
 		
-		// Block signals after waitpid (as required by checklist)
+		// Block signals after waitpid
 		block_signals_after_wait();
 		
 		// Try to get registers even if process might have exited
@@ -131,7 +131,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 		// Check if child stopped
 		if (WIFSTOPPED(status)) {
 			// Check if it's a syscall stop
-			if (WSTOPSIG(status) == (SIGTRAP | 0x80)) {
+			if (WSTOPSIG(status) == SIGTRAP) {
 				// Get registers using PTRACE_GETREGSET
 				if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
 					perror("ptrace GETREGSET");
