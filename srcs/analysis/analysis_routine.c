@@ -195,13 +195,19 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 					} else {
 						const char *signame = ft_signalname(siginfo.si_signo);
 						const char *sicodename = ft_sicodename(siginfo.si_signo, siginfo.si_code);
-						fprintf(stderr, "--- %s {si_signo=%s, si_code=%s, si_pid=%d, si_uid=%d",
-								signame, signame, sicodename, siginfo.si_pid, siginfo.si_uid);
-						
-						// Add additional fields for SIGCHLD
-						if (siginfo.si_signo == SIGCHLD) {
-							fprintf(stderr, ", si_status=%d, si_utime=%ld, si_stime=%ld",
-									siginfo.si_status, siginfo.si_utime, siginfo.si_stime);
+						// For memory-related signals, print si_addr instead of si_pid/si_uid
+						if (siginfo.si_signo == SIGSEGV || siginfo.si_signo == SIGBUS) {
+							fprintf(stderr, "--- %s {si_signo=%s, si_code=%s, si_addr=%p",
+									signame, signame, sicodename, siginfo.si_addr);
+						} else {
+							fprintf(stderr, "--- %s {si_signo=%s, si_code=%s, si_pid=%d, si_uid=%d",
+									signame, signame, sicodename, siginfo.si_pid, siginfo.si_uid);
+							
+							// Add additional fields for SIGCHLD
+							if (siginfo.si_signo == SIGCHLD) {
+								fprintf(stderr, ", si_status=%d, si_utime=%ld, si_stime=%ld",
+										siginfo.si_status, siginfo.si_utime, siginfo.si_stime);
+							}
 						}
 						
 						fprintf(stderr, "} ---\n");
