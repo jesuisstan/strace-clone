@@ -71,7 +71,7 @@ static unsigned long long get_time_us(void)
  * @param statistics
  * @return int
  */
-int analysis_routine(pid_t pid, struct s_statistics *statistics)
+int analysis_routine(pid_t pid, struct s_statistics *statistics, bool quiet_mode)
 {
 	int status;
 	bool is_syscall_entry = true;
@@ -192,7 +192,7 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 					siginfo_t siginfo;
 					if (ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo) == -1) {
 						perror("ptrace PTRACE_GETSIGINFO");
-					} else {
+					} else if (!quiet_mode) {
 						const char *signame = ft_signalname(siginfo.si_signo);
 						const char *sicodename = ft_sicodename(siginfo.si_signo, siginfo.si_code);
 						// For memory-related signals, print si_addr instead of si_pid/si_uid
@@ -224,20 +224,22 @@ int analysis_routine(pid_t pid, struct s_statistics *statistics)
 		}
 		// Check if child exited - but first try to handle exit_group syscall
 		else if (WIFEXITED(status)) {
-			// Check if the last syscall was exit_group
-			if (last_syscall_no == 231) { // exit_group
-				// Print exit_group syscall manually
-				fprintf(stderr, "exit_group(%d) = ?\n", WEXITSTATUS(status));
+			if (!quiet_mode) {
+				// Check if the last syscall was exit_group
+				if (last_syscall_no == 231) { // exit_group
+					// Print exit_group syscall manually
+					fprintf(stderr, "exit_group(%d) = ?\n", WEXITSTATUS(status));
+					fflush(stderr);
+				}
+				// If there was no successful execve, print the last failed one
+				if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
+					print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
+					free(last_failed_execve.filename); last_failed_execve.filename = NULL;
+					last_failed_execve.valid = false;
+				}
+				fprintf(stderr, "+++ exited with %d +++\n", WEXITSTATUS(status));
 				fflush(stderr);
 			}
-			// If there was no successful execve, print the last failed one
-			if (!execve_success && last_failed_execve.valid && last_failed_execve.filename) {
-				print_execve(last_failed_execve.filename, last_failed_execve.envp_ptr, last_failed_execve.arg_count, last_failed_execve.env_count, -1, last_failed_execve.err);
-				free(last_failed_execve.filename); last_failed_execve.filename = NULL;
-				last_failed_execve.valid = false;
-			}
-			fprintf(stderr, "+++ exited with %d +++\n", WEXITSTATUS(status));
-			fflush(stderr);
 			return status;
 		}
 		// Check if child was killed by signal (after processing syscall)

@@ -122,7 +122,7 @@ int exec_program(const t_config *config, t_statistics *statistics)
 		}
 		
 		// Start analysis routine
-		return analysis_routine(pid, statistics);
+		return analysis_routine(pid, statistics, config->statistics);
 	}
 	
 	return 0;

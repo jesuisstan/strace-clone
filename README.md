@@ -109,7 +109,6 @@ This implementation strictly follows the subject requirements and uses only the 
 - **Reinstall**: `make re`
 - **Compile all tests**: `make compile_tests`
 - **Compile individual tests**: `make test_1`, `make test_2`, etc.
-- **Test with threads**: `make test_threads`
 - **Test kill cmd**: `make test_kill`
 - **Test close cmd**: `make test_close`
 
@@ -130,9 +129,6 @@ This implementation strictly follows the subject requirements and uses only the 
 ### Advanced Usage
 
 ```bash
-# Test with multi-threaded program
-make test_threads
-
 # Trace with specific system calls
 ./ft_strace -c echo "Hello, World!"
 ```
@@ -153,7 +149,6 @@ make test_2
 make test_3
 make test_4
 make test_5
-make test_threads
 make test_close
 make test_kill
 ```

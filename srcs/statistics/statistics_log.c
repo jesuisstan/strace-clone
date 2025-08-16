@@ -54,7 +54,7 @@ void statistics_log(t_statistics *statistics) {
 		}
 		
 		char buffer[256];
-		int len = snprintf(buffer, sizeof(buffer), "%5.2f    %f     %lu         %llu",
+		int len = snprintf(buffer, sizeof(buffer), "%5.2f    %0.6f %11lu %9llu",
 				 time_percent, seconds, (unsigned long)usecs_per_call, entry->call_count);
 		
 		for (int i = 0; i < len; ++i) {
@@ -78,7 +78,7 @@ void statistics_log(t_statistics *statistics) {
 	double total_seconds = (double)total_time / 1000000.0;
 	double avg_usecs_per_call = total_calls > 0 ? (double)total_time / total_calls : 0.0;
 	
-	int total_len = snprintf(total_buffer, sizeof(total_buffer), "100,00    %f     %lu         %llu",
+	int total_len = snprintf(total_buffer, sizeof(total_buffer), "100,00    %0.6f %11lu %9llu",
 				 total_seconds, (unsigned long)avg_usecs_per_call, total_calls);
 	
 	for (int i = 0; i < total_len; ++i) {
