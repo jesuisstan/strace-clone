@@ -72,6 +72,56 @@ This implementation strictly follows the subject requirements and uses only the 
 - **Memory Reader**: Safely reads data from traced process memory using `process_vm_readv`
 - **Error Handler**: Manages and displays error conditions
 
+### Architecture
+
+```mermaid
+graph TB
+    subgraph "ft_strace Architecture"
+        A[main.c] --> B[config_parse]
+        A --> C[statistics_init]
+        A --> D[exec_program]
+
+        D --> E[fork]
+        E --> F[Child Process]
+        E --> G[Parent Process]
+
+        F --> H[execvp target program]
+
+        G --> I[PTRACE_SEIZE]
+        G --> J[PTRACE_INTERRUPT]
+        G --> K[analysis_routine]
+
+        K --> L[waitpid loop]
+        L --> M{Signal Type?}
+
+        M -->|SIGTRAP| N[Syscall Entry/Exit]
+        M -->|Other Signal| O[Signal Handler]
+
+        N --> P{Entry or Exit?}
+        P -->|Entry| Q[Get syscall number<br/>Start timer]
+        P -->|Exit| R[Get return value<br/>Stop timer<br/>Log syscall]
+
+        Q --> S[syscall_handle]
+        R --> T[statistics_add_entry]
+
+        S --> U[syscall_log_param]
+        U --> V[100+ param loggers<br/>log_string.c<br/>log_int.c<br/>log_ptr.c<br/>...]
+
+        T --> W[Statistics Table]
+
+        O --> X[Print signal info<br/>if not quiet_mode]
+
+        L --> Y{Process Exited?}
+        Y -->|No| L
+        Y -->|Yes| Z[statistics_log<br/>Print table]
+    end
+
+    style A fill:#e1f5fe
+    style K fill:#f3e5f5
+    style W fill:#e8f5e8
+    style V fill:#fff3e0
+```
+
 ## 📦 Building and Installation
 
 ### Prerequisites
