@@ -42,10 +42,10 @@ static void block_signals_after_wait(void)
 {
 	sigset_t blocked;
 	sigemptyset(&blocked);
-	sigaddset(&blocked, SIGHUP);
-	sigaddset(&blocked, SIGQUIT);
-	sigaddset(&blocked, SIGPIPE);
-	sigaddset(&blocked, SIGTERM);
+	sigaddset(&blocked, SIGHUP); // Terminal is closed
+	sigaddset(&blocked, SIGQUIT); // Ctrl+C
+	sigaddset(&blocked, SIGPIPE); // Pipe is broken
+	sigaddset(&blocked, SIGTERM); // Termination signal
 	sigprocmask(SIG_BLOCK, &blocked, NULL);
 }
 
